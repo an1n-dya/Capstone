@@ -1,404 +1,370 @@
-from django.shortcuts import render, redirect
-from django.core.mail import send_mail, BadHeaderError
-from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
-from django.db import IntegrityError
-from django.urls import reverse
-from .models import User, Events
-from django import forms
-from django.forms import ModelForm
-from django.http import JsonResponse
-from django.contrib import messages
-from django.contrib.auth.forms import PasswordResetForm
-from django.template.loader import render_to_string
-from django.db.models.query_utils import Q
-from django.utils.http import urlsafe_base64_encode
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.encoding import force_bytes
-import smtplib
-from datetime import date, datetime, timedelta, time
-#import datetime
-import pytz
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import JsonResponse, HttpResponseRedirect
+from django.urls import reverse
+from django.db import IntegrityError
+from django.db.models import Q, Count
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-
+from datetime import datetime, timedelta
+import pytz
 import json
-# Initialize environment variables
-import environ
-env = environ.Env()
-environ.Env.read_env()
 
-class EventForm(ModelForm):
-    class Meta:
-        model = Events
-        fields = ['title', 'description','host', 'attendees', 'date', 'start', 'end', 'category', 'number_attending', 'location', 'image']
-        labels = {
-            }
-    
-    # widget for durationfield django?
-        widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control'}),
-            'host': forms.TextInput(attrs={'class': 'form-control', 'type':'hidden'}),
-            'attendees': forms.TextInput(attrs={'class': 'form-control', 'type':'hidden'}),
-            'date': forms.DateInput(attrs={'class': 'form-control', 'type':'date', 'placeholder':'date.today()'}),
-            'start': forms.TimeInput(attrs={'class': 'form-control', 'type':'time'}),
-            'end': forms.TimeInput(attrs={'class': 'form-control', 'type':'time'}),
-            'timestamp':forms.DateTimeInput(attrs={'class': 'form-control', 'type':'hidden'}),
-            'category': forms.Select(attrs={'class': 'form-control'}),
-            'number_attending': forms.NumberInput(attrs={'class': 'form-control', 'type':'hidden', 'value':'1'}),
-            'location': forms.TextInput(attrs={'class': 'form-control', 'type':'text','id':'autocomplete'}),
-            'image': forms.FileInput(attrs={'class': 'form-control', 'type':'file'}),
-            }
-    # function used for validation
-    def clean(self):
-        # data is fetched with super function
-        super(EventForm, self).clean()
-
-        # extract select fields from data
-        title = self.cleaned_data.get('title')
-        description = self.cleaned_data.get('description')
-        date = self.cleaned_data.get('date')
-        start = self.cleaned_data.get('start')
-        end = self.cleaned_data.get('end')
-        print('start', start, 'end', end)
-        
-        try:
-            result = datetime.combine(date.today(), start) 
-            #+ \ 
-            # timedelta(hours=1)
-            print("Result", result)
-
-            only_t = result.time()
-            print("Answer1:", only_t)
-            
-            endtime = datetime.combine(date.today(), end)
-            difference = endtime - result
-            example = difference.total_seconds()
-            minutes = divmod(example, 60)[0]
-            print("Minutes", minutes)
-            if minutes < 60.0:
-                self._errors['end'] = self.error_class([
-                "Minimum one hour per event"])
-                print("Minimum one h")
-        except:
-            pass
-
-        # conditions 
-        if len(title) < 4:
-            self._errors['title'] = self.error_class([
-                'Minimum 4 characters required for Title'])
-            print('Error with title found')
-        if len(description) < 4:
-            self._errors['description'] = self.error_class([
-                'Minimum 4 characters required for Description'])
-            print('Error with desc. found')
-        
-        date_obj = datetime.now(pytz.timezone('US/Pacific'))
-        today = date_obj.date()
-        print(today, date )
-        future = today + timedelta(days=1)
-
-        if date >= future:
-            print('solution') 
-        if date <= today:
-            self._errors['date'] = self.error_class([
-                'Please enter a future date'])
-            print('Error with date found')
-        
-        # checks for future time
-        if start >= end:
-            self._errors['end'] = self.error_class([
-                'Please enter a future time'])
-            print("Error with end time")
-
-        # Model
-        mymodel = Events
-
-        # return any errors if found
-        return self.cleaned_data
-        
+from .models import User, Events, EventComment
+from .forms import (
+    EventForm, UserProfileForm, CustomUserCreationForm,
+    EventFilterForm, CommentForm
+)
 
 def index(request):
-    return render(request, "sports/index.html")
-
-@csrf_exempt
-def update(request, id):
-
-    # Query for requested event
-    try:
-        event = Events.objects.get(pk=id)
-        attending = event.attendees.all()
-    except Events.DoesNotExist:
-        return JsonResponse({"error": "Event not found."}, status=404)
-
-    if request.method == "PUT":
-        data = json.loads(request.body)
-        if data.get("attendees") is not None:
-            user = data["attendees"]
-            try:
-                user = User.objects.get(username=user)
-                # If user is attending, remove them
-                if user in attending:
-                    event.attendees.remove(user)
-                    # Increase number attending by 1
-                    if data.get("number_attending") is not None:
-                        event.number_attending -= 1
-                # Else add user to event
-                else:
-                    event.attendees.add(user)
-                    # Reduce number attending by 1
-                    if data.get("number_attending") is not None:
-                        event.number_attending += 1
-                
-            except User.DoesNotExist:
-                return JsonResponse({"error": "User not found."}, status=404)
-                
-        event.save()
-        print("Save was successful")
-        return HttpResponse(status=204)
+    """Display the homepage with upcoming events."""
+    # Get filter form
+    filter_form = EventFilterForm(request.GET)
     
-    # Method must be via PUT
-    else:
-        return JsonResponse({
-            "error": "GET or PUT request required."
-        }, status=400)
+    # Base queryset for upcoming events
+    tz = pytz.timezone('US/Pacific')
+    now = datetime.now(tz)
+    events = Events.objects.filter(
+        timestamp__gte=now,
+        is_cancelled=False
+    ).select_related('host').prefetch_related('attendees')
+    
+    # Apply filters if form is valid
+    if filter_form.is_valid():
+        if filter_form.cleaned_data['category']:
+            events = events.filter(category=filter_form.cleaned_data['category'])
+        if filter_form.cleaned_data['skill_level']:
+            events = events.filter(skill_level=filter_form.cleaned_data['skill_level'])
+        if filter_form.cleaned_data['date_from']:
+            events = events.filter(date__gte=filter_form.cleaned_data['date_from'])
+        if filter_form.cleaned_data['date_to']:
+            events = events.filter(date__lte=filter_form.cleaned_data['date_to'])
+        if filter_form.cleaned_data['search']:
+            search_term = filter_form.cleaned_data['search']
+            events = events.filter(
+                Q(title__icontains=search_term) | 
+                Q(location__icontains=search_term) |
+                Q(description__icontains=search_term)
+            )
+    
+    # Pagination
+    paginator = Paginator(events, 9)  # Show 9 events per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'filter_form': filter_form,
+        'total_events': paginator.count,
+    }
+    
+    return render(request, "sports/index.html", context)
 
+def event_detail(request, event_id):
+    """Display detailed view of a single event."""
+    event = get_object_or_404(Events, pk=event_id)
+    comments = event.comments.all()
+    comment_form = CommentForm()
+    
+    is_attending = False
+    can_join = False
+    
+    if request.user.is_authenticated:
+        is_attending = request.user in event.attendees.all()
+        can_join = event.can_join(request.user)
+    
+    context = {
+        'event': event,
+        'comments': comments,
+        'comment_form': comment_form,
+        'is_attending': is_attending,
+        'can_join': can_join,
+    }
+    
+    return render(request, "sports/event_detail.html", context)
 
-def delete(request, id):
-    # Query for requested event
-    try:
-        obj = Events.objects.get(pk=id)
-        obj.delete()
-        return JsonResponse({"status": "Object deleted successfully"})
-    except Events.DoesNotExist:
-        return JsonResponse({"status": "Object not found"}, status=404)
-
-
-
-# Testing this decorator
-#@login_required
-def event(request, event_id):
-    # Query for requested event
-    try:
-        event = Events.objects.get(pk=event_id)
-    except Events.DoesNotExist:
-        return JsonResponse({"error": "Event not found."}, status=404)
-
-    # Return email contents
-    if request.method == "GET":
-        return JsonResponse(event.serialize())
-
-
-def events(request):
-    user = request.user
-
-    # Query for events
-    try:
-        now = datetime.now(pytz.timezone('US/Pacific'))
-
-        # Grab current or upcoming event filtered by day and time
-        events = Events.objects.filter(timestamp__gte=now)
-      
-    except Events.DoesNotExist:
-        return JsonResponse({"error": "No events were found."}, status=404)
-
-    #serialize into json
-    return JsonResponse([event.serialize() for event in events],safe=False)
-
-def past(request):
-    # Query for events
-    try:
-        now = datetime.now(pytz.timezone('US/Pacific'))
-        # Grab past events filtered by day and time
-        past_events = Events.objects.filter(timestamp__lte=now)        
-      
-    except Events.DoesNotExist:
-        return JsonResponse({"error": "No events were found."}, status=404)
-
-    #serialize into json
-    return JsonResponse([event.serialize() for event in past_events],safe=False)
-
-
-@login_required(login_url='/login') #redirect when user is not logged in
+@login_required
 def create_event(request):
-    user = request.user
+    """Create a new event."""
     if request.method == "POST":
-	    
         form = EventForm(request.POST, request.FILES)
-
+        
         if form.is_valid():
+            # Create event but don't save yet
+            event = form.save(commit=False)
+            event.host = request.user
             
-            user = request.user
-
-            # combining to make a datetime instance
-            date = form.cleaned_data['date']
-            end = form.cleaned_data['end']
-            event_end = datetime.combine(date, end)
-            now = datetime.now(pytz.timezone('US/Pacific'))
-            
+            # Set timestamp for event end
+            event_date = form.cleaned_data['date']
+            end_time = form.cleaned_data['end']
+            event_end = datetime.combine(event_date, end_time)
             timezone = pytz.timezone('US/Pacific')
-            dt_obj = timezone.localize(event_end)
-          
-            print('Form is valid')
-            post = form.save(commit = False) 
-            post.host = user
-            post.timestamp = dt_obj
-           
-            post.save()
-            id_ = post.id
-
-            # creating an instance with event
-            event = Events.objects.get(id=id_)
-            # add event to the user
-            event.attendees.add(user) 
-            event.save() 
+            event.timestamp = timezone.localize(event_end)
             
-            return HttpResponseRedirect(reverse("index"))
+            event.save()
+            
+            # Add host as first attendee
+            event.attendees.add(request.user)
+            
+            messages.success(request, "Event created successfully!")
+            return redirect('event_detail', event_id=event.id)
         else:
-            print('Form not valid')
-            return render(request, "sports/create_event.html", {
-                "form":form
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = EventForm()
+    
+    return render(request, "sports/create_event.html", {'form': form})
+
+@login_required
+def edit_event(request, event_id):
+    """Edit an existing event."""
+    event = get_object_or_404(Events, pk=event_id)
+
+    if event.is_past:
+        messages.error(request, "You cannot edit a past event.")
+        return redirect('event_detail', event_id=event.id)
+    
+    # Check if user is the host
+    if request.user != event.host:
+        messages.error(request, "You can only edit your own events.")
+        return redirect('event_detail', event_id=event.id)
+    
+    if request.method == "POST":
+        form = EventForm(request.POST, request.FILES, instance=event)
+        
+        if form.is_valid():
+            # Update timestamp
+            event_date = form.cleaned_data['date']
+            end_time = form.cleaned_data['end']
+            event_end = datetime.combine(event_date, end_time)
+            timezone = pytz.timezone('US/Pacific')
+            event.timestamp = timezone.localize(event_end)
+            
+            form.save()
+            messages.success(request, "Event updated successfully!")
+            return redirect('event_detail', event_id=event.id)
+    else:
+        form = EventForm(instance=event)
+    
+    return render(request, "sports/edit_event.html", {
+        'form': form,
+        'event': event
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_attendance(request, event_id):
+    """Toggle user's attendance for an event."""
+    event = get_object_or_404(Events, pk=event_id)
+    user = request.user
+    
+    if user == event.host:
+        return JsonResponse({
+            'success': False,
+            'message': 'Host cannot leave their own event'
+        })
+    
+    if user in event.attendees.all():
+        event.attendees.remove(user)
+        message = "You've left the event"
+        attending = False
+    else:
+        if event.is_full:
+            return JsonResponse({
+                'success': False,
+                'message': 'Event is full'
+            })
+        event.attendees.add(user)
+        message = "You've joined the event!"
+        attending = True
+    
+    return JsonResponse({
+        'success': True,
+        'message': message,
+        'attending': attending,
+        'attendees_count': event.number_attending,
+        'spots_available': event.spots_available
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def cancel_event(request, event_id):
+    """Cancel an event."""
+    event = get_object_or_404(Events, pk=event_id)
+
+    if event.is_past:
+        return JsonResponse({
+            'success': False,
+            'message': 'You cannot cancel a past event.'
+        })
+    
+    if request.user != event.host:
+        return JsonResponse({
+            'success': False,
+            'message': 'Only the host can cancel this event'
+        })
+    
+    event.is_cancelled = True
+    event.save()
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Event cancelled successfully'
+    })
+
+@login_required
+def user_profile(request, username=None):
+    """Display user profile."""
+    if username:
+        user = get_object_or_404(User, username=username)
+    else:
+        user = request.user
+    
+    # Get user's hosted events
+    hosted_events = Events.objects.filter(
+        host=user
+    ).order_by('-date')[:5]
+    
+    # Get user's attended events
+    attended_events = user.attending.all().order_by('-date')[:5]
+    
+    context = {
+        'profile_user': user,
+        'hosted_events': hosted_events,
+        'attended_events': attended_events,
+        'is_own_profile': user == request.user,
+    }
+    
+    return render(request, "sports/profile.html", context)
+
+@login_required
+def edit_profile(request):
+    """Edit user profile."""
+    if request.method == "POST":
+        form = UserProfileForm(request.POST, request.FILES, instance=request.user)
+        
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile updated successfully!")
+            return redirect('profile')
+    else:
+        form = UserProfileForm(instance=request.user)
+    
+    return render(request, "sports/edit_profile.html", {'form': form})
+
+@login_required
+def my_events(request):
+    """Display user's events (hosted and attending)."""
+    # Hosted events
+    hosted = Events.objects.filter(host=request.user).order_by('-date')
+    
+    # Attending events
+    attending = request.user.attending.exclude(host=request.user).order_by('-date')
+    
+    context = {
+        'hosted_events': hosted,
+        'attending_events': attending,
+    }
+    
+    return render(request, "sports/my_events.html", context)
+
+def past_events(request):
+    """Display past events."""
+    tz = pytz.timezone('US/Pacific')
+    now = datetime.now(tz)
+    
+    events = Events.objects.filter(
+        timestamp__lt=now
+    ).select_related('host').prefetch_related('attendees').order_by('-date')
+    
+    paginator = Paginator(events, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, "sports/past_events.html", {'page_obj': page_obj})
+
+@login_required
+@require_http_methods(["POST"])
+def add_comment(request, event_id):
+    """Add a comment to an event."""
+    event = get_object_or_404(Events, pk=event_id)
+    
+    if request.method == "POST":
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.event = event
+            comment.author = request.user
+            comment.save()
+            
+            return JsonResponse({
+                'success': True,
+                'comment': {
+                    'author': comment.author.username,
+                    'content': comment.content,
+                    'created_at': comment.created_at.strftime("%B %d, %Y at %I:%M %p")
+                }
             })
     
-    # GET method
-    else:
-        date_obj = datetime.now(pytz.timezone('US/Pacific'))
-        today = date_obj.date()
-        today = today + timedelta(days=1)
-        initial = {
-            'host':user,
-            'date':today,
-        }
-        print(today)
-        return render(request, "sports/create_event.html", {
-            "form": EventForm(initial=initial)
-        })
+    return JsonResponse({'success': False})
 
-def password_reset_sent(request):
-   
-    if request.method == "POST":
-        print('Test was ran')
-        form = PasswordResetForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data['email']
-            associated_users = User.objects.filter(Q(email=data))
-            if associated_users.exists():
-                for user in associated_users:
-                    print("user:", user)
-                    subject = "Password Reset Requested"
-                    email_template_name = "registration/password_reset_email.txt"
-                    c = {
-                    "email":user.email,
-                    'domain':'127.0.0.1:8000', #'your-website-name.com',
-                    'site_name': 'Website Name',
-                    "uid": urlsafe_base64_encode(force_bytes(user.pk)),
-                    'token': default_token_generator.make_token(user),
-                    'protocol': 'http',
-                    }
-                    email = render_to_string(email_template_name, c)
-                    try:
-                        send_mail(subject, email, env('USER_EMAIL'), [user.email], fail_silently=False)
-                    
-                    except BadHeaderError:
-                        return HttpResponse('Invalid header found.')
-                        
-                    messages.success(request, 'A message with reset password instructions has been sent to your inbox.')
-                    return HttpResponseRedirect(reverse("index"))
-            #else:
-            #    messages.success(request, 'An invalid email has been entered.')
-    form = PasswordResetForm()
-    return render(request, "registration/password_reset_done.html", {
-        "form":form
-        })
-
-def password_reset_request(request):
-	if request.method == "POST":
-		form = PasswordResetForm(request.POST)
-		if form.is_valid():
-			data = password_reset_form.cleaned_data['email']
-			associated_users = User.objects.filter(Q(email=data))
-			if associated_users.exists():
-				for user in associated_users:
-					subject = "Password Reset Requested"
-					email_template_name = "registration/password_reset_email.txt"
-					c = {
-					"email":user.email,
-					'domain':'your-website-name.com',
-					'site_name': 'Website Name',
-					"uid": urlsafe_base64_encode(force_bytes(user.pk)),
-					'token': default_token_generator.make_token(user),
-					'protocol': 'https',
-					}
-					email = render_to_string(email_template_name, c)
-					try:
-						send_mail(subject, email, 'christian7art@yahoo.com', [user.email], fail_silently=False)
-					except BadHeaderError:
-						return HttpResponse('Invalid header found.')
-						
-					messages.success(request, 'A message with reset password instructions has been sent to your inbox.')
-					return HttpResponseRedirect(reverse("index"))
-			messages.error(request, 'An invalid email has been entered.')
-	form = PasswordResetForm()
-	return render(request, "registration/password_reset.html", {
-        "form":form
-        })
-
-
-def login_user(request):
+# Authentication views
+def login_view(request):
+    """User login."""
     if request.method == "POST":
         username = request.POST['username']
         password = request.POST['password']
         user = authenticate(request, username=username, password=password)
+        
         if user is not None:
             login(request, user)
-            # Redirect to a success page.
-            return HttpResponseRedirect(reverse("index"))
+            next_url = request.GET.get('next', 'index')
+            messages.success(request, f"Welcome back, {user.username}!")
+            return redirect(next_url)
         else:
-            # Return an 'invalid login' error message.
-            messages.success(request, ("There was an error logging in, try again."))
-            return redirect('login')
-    else:
-        return render(request, "sports/login.html")
+            messages.error(request, "Invalid username or password.")
+            return render(request, "sports/login.html")
+    
+    return render(request, "sports/login.html")
 
-
-def logout_user(request):
+def logout_view(request):
+    """User logout."""
     logout(request)
-    messages.success(request, ("You Were Logged Out!"))
-    # for now I'll redirect to index
-    return HttpResponseRedirect(reverse("index"))
-
+    messages.success(request, "You have been logged out successfully.")
+    return redirect('index')
 
 def register(request):
+    """User registration."""
     if request.method == "POST":
+        form = CustomUserCreationForm(request.POST)
         
-        # Grab the values from the form
-        username = request.POST["username"]
-        email = request.POST["email"]
-        password = request.POST["password"]
-        confirmation = request.POST["confirmation"]
-
-        # Check passwords match, else raise message
-        if password != confirmation:
-            return render(request, "sports/register.html", {
-                "message": "Passwords must match."
-            })
-        # Attempt to create new user
-        try:
-            user = User.objects.create_user(username, email, password)
-            user.save()
-        # Database field null = false, expects a value
-        except IntegrityError:
-            return render(request, "sports/register.html", {
-                "message": "Username already taken."
-            })
-
-        # Calls the login function with user's credentials
-        # Do I need to authenicate the user?
-        login(request, user)
-        messages.success(request, ("Registration Successful!"))
-        return HttpResponseRedirect(reverse("index"))
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Registration successful! Welcome to Sports Meets!")
+            return redirect('index')
     else:
-        return render(request, "sports/register.html")
-
+        form = CustomUserCreationForm()
     
+    return render(request, "sports/register.html", {'form': form})
+
+# API Views
+def api_events(request):
+    """API endpoint for upcoming events."""
+    tz = pytz.timezone('US/Pacific')
+    now = datetime.now(tz)
+    
+    events = Events.objects.filter(
+        timestamp__gte=now,
+        is_cancelled=False
+    ).select_related('host').prefetch_related('attendees')
+    
+    return JsonResponse([event.serialize() for event in events], safe=False)
+
+def api_event(request, event_id):
+    """API endpoint for single event."""
+    event = get_object_or_404(Events, pk=event_id)
+    return JsonResponse(event.serialize())

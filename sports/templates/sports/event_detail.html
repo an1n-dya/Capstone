@@ -1,0 +1,351 @@
+{% extends "sports/layout.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ event.title }} - Sports Meets{% endblock %}
+
+{% block extra_css %}
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Event Main Info -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                {% if event.image %}
+                <img src="{{ event.image.url }}" class="card-img-top" alt="{{ event.title }}" 
+                     style="height: 400px; object-fit: cover;">
+                {% else %}
+                <div class="card-img-top bg-gradient text-white d-flex align-items-center justify-content-center"
+                     style="height: 400px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <i class="bi bi-trophy-fill" style="font-size: 100px; opacity: 0.5;"></i>
+                </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h2 class="card-title mb-2">{{ event.title }}</h2>
+                            <div class="mb-3">
+                                <span class="badge bg-primary">{{ event.get_category_display }}</span>
+                                <span class="badge bg-info">{{ event.get_skill_level_display }}</span>
+                                {% if event.is_cancelled %}
+                                <span class="badge bg-danger">Cancelled</span>
+                                {% elif event.is_past %}
+                                <span class="badge bg-secondary">Past Event</span>
+                                {% elif event.is_full %}
+                                <span class="badge bg-warning">Full</span>
+                                {% else %}
+                                <span class="badge bg-success">{{ event.spots_available }} spots available</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if user.is_authenticated and user == event.host and not event.is_past %}
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-gear"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'edit_event' event.id %}">
+                                    <i class="bi bi-pencil"></i> Edit Event
+                                </a></li>
+                                {% if not event.is_cancelled %}
+                                <li><a class="dropdown-item text-danger" href="#" onclick="cancelEvent({{ event.id }})">
+                                    <i class="bi bi-x-circle"></i> Cancel Event
+                                </a></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="card-text">{{ event.description }}</p>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h5>Event Details</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="bi bi-calendar3 text-primary"></i>
+                                    <strong>Date:</strong> {{ event.date|date:"l, F d, Y" }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-clock text-primary"></i>
+                                    <strong>Time:</strong> {{ event.start|time:"g:i A" }} - {{ event.end|time:"g:i A" }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-geo-alt text-primary"></i>
+                                    <strong>Location:</strong> {{ event.location }}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-person text-primary"></i>
+                                    <strong>Host:</strong> 
+                                    <a href="{% url 'user_profile' event.host.username %}" class="text-decoration-none">
+                                        {{ event.host.username }}
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5>Attendance</h5>
+                            <div class="progress mb-3" style="height: 25px;">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: {{ event.number_attending|floatformat:0|mul:100|div:event.max_attendees }}%"
+                                     aria-valuenow="{{ event.number_attending }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ event.max_attendees }}">
+                                    {{ event.number_attending }}/{{ event.max_attendees }}
+                                </div>
+                            </div>
+                            
+                            {% if user.is_authenticated and not event.is_past and not event.is_cancelled %}
+                                {% if user == event.host %}
+                                <button class="btn btn-secondary w-100" disabled>
+                                    <i class="bi bi-star-fill"></i> You're hosting this event
+                                </button>
+                                {% elif is_attending %}
+                                <button class="btn btn-danger w-100" onclick="toggleAttendance({{ event.id }})">
+                                    <i class="bi bi-x-circle"></i> Leave Event
+                                </button>
+                                {% elif can_join %}
+                                <button class="btn btn-success w-100" onclick="toggleAttendance({{ event.id }})">
+                                    <i class="bi bi-check-circle"></i> Join Event
+                                </button>
+                                {% else %}
+                                <button class="btn btn-secondary w-100" disabled>
+                                    <i class="bi bi-x-circle"></i> Event Full
+                                </button>
+                                {% endif %}
+                            {% elif not user.is_authenticated %}
+                            <a href="{% url 'login' %}?next={% url 'event_detail' event.id %}" class="btn btn-primary w-100">
+                                <i class="bi bi-box-arrow-in-right"></i> Login to Join
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Map Section -->
+                    {% if event.location %}
+                    <div class="mt-4">
+                        <h5>Location Map</h5>
+                        <div id="map"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Comments Section -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-chat-dots"></i> Discussion
+                        <span class="badge bg-secondary">{{ comments.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if user.is_authenticated %}
+                    <form id="commentForm" class="mb-4">
+                        {% csrf_token %}
+                        {{ comment_form.content }}
+                        <button type="submit" class="btn btn-primary mt-2">
+                            <i class="bi bi-send"></i> Post Comment
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <a href="{% url 'login' %}?next={% url 'event_detail' event.id %}">Login</a> to join the discussion.
+                    </div>
+                    {% endif %}
+                    
+                    <div id="commentsList">
+                        {% for comment in comments %}
+                        <div class="comment mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>
+                                        <a href="{% url 'user_profile' comment.author.username %}" class="text-decoration-none">
+                                            {{ comment.author.username }}
+                                        </a>
+                                    </strong>
+                                    <small class="text-muted ms-2">
+                                        {{ comment.created_at|naturaltime }}
+                                    </small>
+                                </div>
+                            </div>
+                            <p class="mb-0 mt-2">{{ comment.content }}</p>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No comments yet. Be the first to comment!</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Attendees Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people"></i> Attendees
+                        <span class="badge bg-primary">{{ event.number_attending }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="attendees-list">
+                        {% for attendee in event.attendees.all|slice:":10" %}
+                        <a href="{% url 'user_profile' attendee.username %}" class="text-decoration-none">
+                            <div class="d-flex align-items-center mb-2">
+                                {% if attendee.profile_picture %}
+                                <img src="{{ attendee.profile_picture.url }}" class="rounded-circle me-2" 
+                                     width="30" height="30" alt="{{ attendee.username }}">
+                                {% else %}
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                                     style="width: 30px; height: 30px;">
+                                    {{ attendee.username.0|upper }}
+                                </div>
+                                {% endif %}
+                                <span>{{ attendee.username }}</span>
+                                {% if attendee == event.host %}
+                                <span class="badge bg-warning ms-2">Host</span>
+                                {% endif %}
+                            </div>
+                        </a>
+                        {% empty %}
+                        <p class="text-muted">No attendees yet.</p>
+                        {% endfor %}
+                        
+                        {% if event.number_attending > 10 %}
+                        <p class="text-muted mt-3 mb-0">
+                            And {{ event.number_attending|add:"-10" }} more...
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Similar Events -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-week"></i> Similar Events
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">Coming soon...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle attendance
+function toggleAttendance(eventId) {
+    fetch(`/events/${eventId}/toggle-attendance/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+// Cancel event
+function cancelEvent(eventId) {
+    if (confirm('Are you sure you want to cancel this event? This action cannot be undone.')) {
+        fetch(`/events/${eventId}/cancel/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+// Add comment
+document.getElementById('commentForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    fetch(`/events/{{ event.id }}/comment/`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+});
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Initialize map
+function initMap() {
+    const location = { lat: {{ event.latitude|default:"37.7749" }}, lng: {{ event.longitude|default:"-122.4194" }} };
+    const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 15,
+        center: location,
+    });
+    const marker = new google.maps.Marker({
+        position: location,
+        map: map,
+        title: "{{ event.title }}"
+    });
+}
+</script>
+
+{% if GOOGLE_MAPS_API_KEY %}
+<script async defer 
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap">
+</script>
+{% endif %}
+{% endblock %}
