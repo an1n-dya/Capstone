@@ -26,15 +26,9 @@ Sports Meets is fundamentally different from the other projects in the CS50W cou
 
 The application demonstrates significant technical complexity through:
 
-1. **Real-Time Event Management**: 
+1. **Real-Time Event Management**:
    - Events automatically transition from "upcoming" to "past" based on their timestamp
    - Dynamic status updates (full, cancelled, spots available) without page refresh
-   - Timezone-aware datetime handling using pytz
-
-2. **Advanced Google Maps Integration**:
-   - Autocomplete place search for event locations
-   - Interactive maps showing event venues
-   - Geocoding to store latitude/longitude for each event
 
 3. **Multi-Model Relationships**:
    - Complex many-to-many relationships between Users and Events
@@ -56,10 +50,6 @@ The application demonstrates significant technical complexity through:
    - Profile pictures and bio information
    - User statistics and event history
 
-7. **Email Integration**:
-   - Password reset functionality with email tokens
-   - Configurable SMTP settings for production
-
 8. **Security Features**:
    - CSRF protection on all forms
    - User authentication requirements for sensitive actions
@@ -74,7 +64,6 @@ The application demonstrates significant technical complexity through:
 - **Attendance Management**: Join or leave events with real-time capacity updates
 - **User Profiles**: Customizable profiles showing hosted and attended events
 - **Comments System**: Discussion threads for each event
-- **Location Services**: Google Maps integration for venue selection and display
 - **Responsive Design**: Mobile-first approach ensuring usability across all devices
 
 ### Additional Features
@@ -103,7 +92,6 @@ capstone/
 │   ├── forms.py           # Django forms for user input
 │   ├── urls.py            # Application-level URL patterns
 │   ├── admin.py           # Admin interface configuration
-│   ├── context_processors.py  # Custom context processors
 │   │
 │   ├── static/sports/     # Static files
 │   │   ├── styles.css     # Custom CSS styles
@@ -146,7 +134,6 @@ capstone/
 - Many-to-many relationship with attendees
 - Foreign key relationship with host
 - Dynamic properties for event status (is_full, is_past, spots_available)
-- Google Maps coordinates storage
 
 ### EventComment Model
 - Comments linked to events and users
@@ -155,52 +142,41 @@ capstone/
 
 ## Installation and Setup
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/yourusername/capstone.git
-   cd capstone
-   ```
-
-2. **Create a virtual environment**:
+1. **Create a virtual environment**:
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**:
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**:
+3. **Set up environment variables**:
    ```bash
    cp .env.template .env
    # Edit .env file with your configuration
    ```
 
-5. **Configure Google Maps API**:
-   - Get an API key from [Google Cloud Console](https://console.cloud.google.com)
-   - Enable Maps JavaScript API and Places API
-   - Add the key to your .env file
-
-6. **Run migrations**:
+4. **Run migrations**:
    ```bash
    python manage.py makemigrations
    python manage.py migrate
    ```
 
-7. **Create a superuser** (optional):
+5. **Create a superuser** (optional):
    ```bash
    python manage.py createsuperuser
    ```
 
-8. **Run the development server**:
+6. **Run the development server**:
    ```bash
-   python manage.py runserver
+   python manage.py runserver 8080
    ```
 
-9. **Access the application**:
-   - Open your browser and navigate to `http://localhost:8000`
+7. **Access the application**:
+   - Open your browser and navigate to `http://localhost:8080`
    - Register a new account or login with existing credentials
 
 ## Usage Guide
@@ -209,9 +185,8 @@ capstone/
 1. Login to your account
 2. Click "Create Event" in the navigation
 3. Fill in event details including sport type, skill level, and location
-4. Use the Google Maps autocomplete to select a venue
-5. Set participant limits and upload an optional image
-6. Submit the form to create your event
+4. Set participant limits and upload an optional image
+5. Submit the form to create your event
 
 ### Joining an Event
 1. Browse events on the homepage
@@ -231,9 +206,7 @@ capstone/
 - **Backend**: Django 4.2.24 (Python web framework)
 - **Frontend**: Bootstrap 5.3, JavaScript (ES6+)
 - **Database**: SQLite (development), PostgreSQL-ready
-- **APIs**: Google Maps JavaScript API, Google Places API
 - **Authentication**: Django's built-in authentication system
-- **Email**: SMTP integration for password resets
 - **Styling**: Custom CSS with Bootstrap components
 - **Icons**: Bootstrap Icons library
 
@@ -254,14 +227,3 @@ The application is fully responsive and optimized for mobile devices:
 - Secure session management
 - Environment variable protection for sensitive data
 - SQL injection prevention through Django ORM
-
-## Future Enhancements
-
-- Email notifications for event updates
-- Event reminders and calendar integration
-- Team/group functionality
-- Event chat/messaging system
-- Weather API integration for outdoor events
-- Social sharing features
-- Advanced analytics for hosts
-- Mobile application development
