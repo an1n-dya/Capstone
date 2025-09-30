@@ -1,168 +1,27 @@
 {% extends "sports/layout.html" %}
 {% load static %}
-{% load crispy_forms_tags %}
 
-{% block title %}Create Event - Sports Meets{% endblock %}
+{% block title %}Create Event{% endblock %}
 
-{% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">
-                        <i class="bi bi-calendar-plus"></i> Create New Event
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <form method="post" enctype="multipart/form-data" id="eventForm">
-                        {% csrf_token %}
-                        
-                        <div class="row">
-                            <div class="col-md-12 mb-3">
-                                <label for="{{ form.title.id_for_label }}" class="form-label">
-                                    Event Title <span class="text-danger">*</span>
-                                </label>
-                                {{ form.title }}
-                                {% if form.title.errors %}
-                                <div class="text-danger small">{{ form.title.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-12 mb-3">
-                                <label for="{{ form.description.id_for_label }}" class="form-label">
-                                    Description <span class="text-danger">*</span>
-                                </label>
-                                {{ form.description }}
-                                {% if form.description.errors %}
-                                <div class="text-danger small">{{ form.description.errors.0 }}</div>
-                                {% endif %}
-                                <small class="text-muted">Describe what participants can expect, what to bring, skill requirements, etc.</small>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.category.id_for_label }}" class="form-label">
-                                    Sport <span class="text-danger">*</span>
-                                </label>
-                                {{ form.category }}
-                                {% if form.category.errors %}
-                                <div class="text-danger small">{{ form.category.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.skill_level.id_for_label }}" class="form-label">
-                                    Skill Level <span class="text-danger">*</span>
-                                </label>
-                                {{ form.skill_level }}
-                                {% if form.skill_level.errors %}
-                                <div class="text-danger small">{{ form.skill_level.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ form.date.id_for_label }}" class="form-label">
-                                    Date <span class="text-danger">*</span>
-                                </label>
-                                {{ form.date }}
-                                {% if form.date.errors %}
-                                <div class="text-danger small">{{ form.date.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ form.start.id_for_label }}" class="form-label">
-                                    Start Time <span class="text-danger">*</span>
-                                </label>
-                                {{ form.start }}
-                                {% if form.start.errors %}
-                                <div class="text-danger small">{{ form.start.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ form.end.id_for_label }}" class="form-label">
-                                    End Time <span class="text-danger">*</span>
-                                </label>
-                                {{ form.end }}
-                                {% if form.end.errors %}
-                                <div class="text-danger small">{{ form.end.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-12 mb-3">
-                                <label for="{{ form.location.id_for_label }}" class="form-label">
-                                    Location <span class="text-danger">*</span>
-                                </label>
-                                {{ form.location }}
-                                {% if form.location.errors %}
-                                <div class="text-danger small">{{ form.location.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.max_attendees.id_for_label }}" class="form-label">
-                                    Maximum Attendees <span class="text-danger">*</span>
-                                </label>
-                                {{ form.max_attendees }}
-                                {% if form.max_attendees.errors %}
-                                <div class="text-danger small">{{ form.max_attendees.errors.0 }}</div>
-                                {% endif %}
-                                <small class="text-muted">Including yourself (2-100 people)</small>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.image.id_for_label }}" class="form-label">
-                                    Event Image (Optional)
-                                </label>
-                                {{ form.image }}
-                                {% if form.image.errors %}
-                                <div class="text-danger small">{{ form.image.errors.0 }}</div>
-                                {% endif %}
-                                <small class="text-muted">Upload an image to make your event more appealing</small>
-                            </div>
-                        </div>
-                        
-                        {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                        {% endif %}
-                        
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{% url 'index' %}" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Create Event
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Tips Card -->
-            <div class="card mt-4 border-info">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightbulb"></i> Tips for Creating Great Events
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <ul class="mb-0">
-                        <li>Choose a clear, descriptive title that tells people what sport and activity type</li>
-                        <li>Include important details like skill level expectations and what to bring</li>
-                        <li>Pick a convenient location with parking and facilities</li>
-                        <li>Set realistic attendance limits based on the venue and activity</li>
-                        <li>Add an appealing image to attract more participants</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
+{% block body %}
+<h2 style="margin-left: 20px;">Create an event</h2>
+
+<!--<input id="autocomplete" placeholder="" type="text"  size="25"/>-->
+
+<p id="details"></p>
+
+
+
+<div id="container-new-event" class="form-group">
+    <form action="" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{form.as_p}}
+
+        <input type="submit" class="btn btn-secondary" value="Submit">  
+    </form>
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script></script>
+
+{% block script %}
 {% endblock %}

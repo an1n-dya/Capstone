@@ -1,7 +1,0 @@
-Django
-Pillow
-python-decouple
-django-environ
-pytz
-django-crispy-forms
-crispy-bootstrap5

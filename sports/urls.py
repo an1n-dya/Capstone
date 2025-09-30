@@ -1,25 +1,24 @@
 from django.urls import path
-# from django.contrib.auth import views as auth_views
 from . import views
+from django.contrib.auth import views as auth_views 
+
+
+#app_name = "sports"
 
 urlpatterns = [
-    # Main pages
     path("", views.index, name="index"),
-    path("events/past/", views.past_events, name="past_events"),
-    path("events/<int:event_id>/", views.event_detail, name="event_detail"),
-    
-    # Event management
-    path("events/create/", views.create_event, name="create_event"),
-    path("events/<int:event_id>/edit/", views.edit_event, name="edit_event"),
-    path("events/<int:event_id>/cancel/", views.cancel_event, name="cancel_event"),
-    path("events/<int:event_id>/toggle-attendance/", views.toggle_attendance, name="toggle_attendance"),
-    path("events/<int:event_id>/comment/", views.add_comment, name="add_comment"),
-    
-    # User management & Authentication
-    path("profile/edit/", views.edit_profile, name="edit_profile"),
-    path("profile/<str:username>/", views.user_profile, name="user_profile"),
-    path("my-events/", views.my_events, name="my_events"),
-    path("login/", views.login_view, name="login"),
-    path("logout/", views.logout_view, name="logout"),
-    path("register/", views.register, name="register"),
+    path("create_event", views.create_event, name="create_event"),
+    path("login", views.login_user, name="login"),
+    path("register", views.register, name="register"),
+    path("logout", views.logout_user, name="logout"),
+    path("password_reset_sent", views.password_reset_sent, name="password_reset_sent"),
+
+    # apis
+    path("events", views.events, name="events"),
+    path("past_events", views.past, name="past"),
+    path("event/<int:event_id>", views.event, name="event"),
+    path("update/<int:id>", views.update, name="update"),
+    path("delete/<int:id>", views.delete, name="delete"),
+
+
 ]
