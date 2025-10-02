@@ -59,7 +59,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'sports.context_processors.google_maps_api_key',
             ],
         },
     },
@@ -125,6 +124,3 @@ else:
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'index'
-
-# Google Maps API
-GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')

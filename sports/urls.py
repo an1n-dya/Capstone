@@ -39,8 +39,4 @@ urlpatterns = [
     path('reset/done/', 
          auth_views.PasswordResetCompleteView.as_view(template_name='sports/password_reset_complete.html'), 
          name='password_reset_complete'),
-    
-    # API endpoints
-    path("api/events/", views.api_events, name="api_events"),
-    path("api/events/<int:event_id>/", views.api_event, name="api_event"),
 ]

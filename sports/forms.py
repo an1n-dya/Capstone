@@ -39,7 +39,7 @@ class EventForm(ModelForm):
     class Meta:
         model = Events
         fields = ['title', 'description', 'date', 'start', 'end', 'category', 
-                  'skill_level', 'max_attendees', 'location', 'image']
+                  'skill_level', 'max_attendees', 'image']
         
         widgets = {
             'title': forms.TextInput(attrs={
@@ -69,11 +69,6 @@ class EventForm(ModelForm):
                 'class': 'form-control',
                 'min': 2,
                 'max': 100
-            }),
-            'location': forms.TextInput(attrs={
-                'class': 'form-control',
-                'id': 'autocomplete',
-                'placeholder': 'Start typing to search for a location...'
             }),
             'image': forms.FileInput(attrs={'class': 'form-control'}),
         }
@@ -143,7 +138,7 @@ class EventFilterForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Search by title or location...'
+            'placeholder': 'Search events...'
         })
     )
 

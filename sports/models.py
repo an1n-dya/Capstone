@@ -73,9 +73,6 @@ class Events(models.Model):
         default=10,
         validators=[MinValueValidator(2), MaxValueValidator(100)]
     )
-    location = models.CharField(max_length=255)
-    latitude = models.FloatField(null=True, blank=True)
-    longitude = models.FloatField(null=True, blank=True)
     image = models.ImageField(upload_to="events/", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -137,9 +134,6 @@ class Events(models.Model):
             "max_attendees": self.max_attendees,
             "spots_available": self.spots_available,
             "is_full": self.is_full,
-            "location": self.location,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
             "image": self.image.url if self.image else None,
             "is_past": self.is_past,
             "created_at": self.created_at.strftime("%B %d, %Y"),

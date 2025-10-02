@@ -31,36 +31,31 @@ The application demonstrates significant technical complexity through:
    - Dynamic status updates (full, cancelled, spots available) without page refresh
    - Timezone-aware datetime handling using pytz
 
-2. **Advanced Google Maps Integration**:
-   - Autocomplete place search for event locations
-   - Interactive maps showing event venues
-   - Geocoding to store latitude/longitude for each event
-
-3. **Multi-Model Relationships**:
+2. **Multi-Model Relationships**:
    - Complex many-to-many relationships between Users and Events
    - Foreign key relationships for event hosting
    - Comment system with nested relationships
 
-4. **Dynamic Filtering and Search**:
+3. **Dynamic Filtering and Search**:
    - Multi-parameter event filtering (sport, skill level, date range)
    - Full-text search across multiple fields
    - Pagination with filter persistence
 
-5. **Progressive Enhancement**:
+4. **Progressive Enhancement**:
    - JavaScript-powered interactions with fallback functionality
    - AJAX requests for seamless user experience
    - Real-time form validation
 
-6. **Comprehensive User System**:
+5. **Comprehensive User System**:
    - Extended user profiles with additional fields
    - Profile pictures and bio information
    - User statistics and event history
 
-7. **Email Integration**:
+6. **Email Integration**:
    - Password reset functionality with email tokens
    - Configurable SMTP settings for production
 
-8. **Security Features**:
+7. **Security Features**:
    - CSRF protection on all forms
    - User authentication requirements for sensitive actions
    - Input validation and sanitization
@@ -69,12 +64,11 @@ The application demonstrates significant technical complexity through:
 
 ### Core Features
 
-- **Event Creation**: Users can create detailed sports events with location, date, time, skill level, and participant limits
+- **Event Creation**: Users can create detailed sports events with date, time, skill level, and participant limits
 - **Event Discovery**: Browse upcoming events with advanced filtering options
 - **Attendance Management**: Join or leave events with real-time capacity updates
 - **User Profiles**: Customizable profiles showing hosted and attended events
 - **Comments System**: Discussion threads for each event
-- **Location Services**: Google Maps integration for venue selection and display
 - **Responsive Design**: Mobile-first approach ensuring usability across all devices
 
 ### Additional Features
@@ -83,7 +77,7 @@ The application demonstrates significant technical complexity through:
 - **Skill Level Matching**: Filter events by skill requirements
 - **Event History**: View past events and participation history
 - **Event Cancellation**: Hosts can cancel events with notifications
-- **Search Functionality**: Find events by title, location, or description
+- **Search Functionality**: Find events by title, or description
 - **Pagination**: Efficient browsing of large event lists
 - **Real-time Validation**: Immediate feedback on form inputs
 
@@ -92,7 +86,7 @@ The application demonstrates significant technical complexity through:
 ```
 capstone/
 ├── capstone/               # Main project directory
-│   ├── settings.py        # Django settings with email, timezone, and API configurations
+│   ├── settings.py        # Django settings with email, timezone, and so on
 │   ├── urls.py            # Project-level URL routing
 │   ├── wsgi.py            # WSGI configuration for deployment
 │   └── asgi.py            # ASGI configuration for async support
@@ -142,11 +136,10 @@ capstone/
 - Methods for getting event statistics
 
 ### Events Model
-- Comprehensive event information including title, description, date, time, location
+- Comprehensive event information including title, description, date, time
 - Many-to-many relationship with attendees
 - Foreign key relationship with host
 - Dynamic properties for event status (is_full, is_past, spots_available)
-- Google Maps coordinates storage
 
 ### EventComment Model
 - Comments linked to events and users
@@ -172,28 +165,23 @@ capstone/
    # Edit .env file with your configuration
    ```
 
-4. **Configure Google Maps API**:
-   - Get an API key from [Google Cloud Console](https://console.cloud.google.com)
-   - Enable Maps JavaScript API and Places API
-   - Add the key to your .env file
-
-5. **Run migrations**:
+4. **Run migrations**:
    ```bash
    python manage.py makemigrations
    python manage.py migrate
    ```
 
-6. **Create a superuser** (optional):
+5. **Create a superuser** (optional):
    ```bash
    python manage.py createsuperuser
    ```
 
-7. **Run the development server**:
+6. **Run the development server**:
    ```bash
    python manage.py runserver
    ```
 
-8. **Access the application**:
+7. **Access the application**:
    - Open your browser and navigate to `http://localhost:8000`
    - Register a new account or login with existing credentials
 
@@ -202,10 +190,9 @@ capstone/
 ### Creating an Event
 1. Login to your account
 2. Click "Create Event" in the navigation
-3. Fill in event details including sport type, skill level, and location
-4. Use the Google Maps autocomplete to select a venue
-5. Set participant limits and upload an optional image
-6. Submit the form to create your event
+3. Fill in event details including sport type, and skill level.
+4. Set participant limits and upload an optional image.
+5. Submit the form to create your event.
 
 ### Joining an Event
 1. Browse events on the homepage
@@ -225,7 +212,6 @@ capstone/
 - **Backend**: Django 4.2.24 (Python web framework)
 - **Frontend**: Bootstrap 5.3, JavaScript (ES6+)
 - **Database**: SQLite (development), PostgreSQL-ready
-- **APIs**: Google Maps JavaScript API, Google Places API
 - **Authentication**: Django's built-in authentication system
 - **Email**: SMTP integration for password resets
 - **Styling**: Custom CSS with Bootstrap components
@@ -248,14 +234,3 @@ The application is fully responsive and optimized for mobile devices:
 - Secure session management
 - Environment variable protection for sensitive data
 - SQL injection prevention through Django ORM
-
-## Future Enhancements
-
-- Email notifications for event updates
-- Event reminders and calendar integration
-- Team/group functionality
-- Event chat/messaging system
-- Weather API integration for outdoor events
-- Social sharing features
-- Advanced analytics for hosts
-- Mobile application development

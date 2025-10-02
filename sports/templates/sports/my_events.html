@@ -61,10 +61,6 @@
                                 <i class="bi bi-clock text-primary"></i>
                                 {{ event.start|time:"g:i A" }} - {{ event.end|time:"g:i A" }}
                             </p>
-                            <p class="mb-1">
-                                <i class="bi bi-geo-alt text-primary"></i>
-                                {{ event.location|truncatewords:4 }}
-                            </p>
                             <p class="mb-0">
                                 <i class="bi bi-people text-primary"></i>
                                 {{ event.number_attending }}/{{ event.max_attendees }} attending
@@ -127,10 +123,6 @@
                             <p class="mb-1">
                                 <i class="bi bi-clock text-primary"></i>
                                 {{ event.start|time:"g:i A" }} - {{ event.end|time:"g:i A" }}
-                            </p>
-                            <p class="mb-1">
-                                <i class="bi bi-geo-alt text-primary"></i>
-                                {{ event.location|truncatewords:4 }}
                             </p>
                             <p class="mb-1">
                                 <i class="bi bi-person text-primary"></i>

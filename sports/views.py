@@ -44,7 +44,6 @@ def index(request):
             search_term = filter_form.cleaned_data['search']
             events = events.filter(
                 Q(title__icontains=search_term) | 
-                Q(location__icontains=search_term) |
                 Q(description__icontains=search_term)
             )
     

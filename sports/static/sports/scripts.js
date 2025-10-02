@@ -67,11 +67,7 @@ function past(){
         e.innerHTML +=  `<li>Category: ${element.category} </li>`;
         e.innerHTML +=  `<li>Number Attending: ${element.number_attending} </li>`;
         if (element.image){
-            e.innerHTML +=  `<li>Location: ${element.location} </li><br>`;
             e.innerHTML +=  `<img src="/media/${element.image}" width="40%" height="40%"><br><br>`;
-        }
-        else {
-            e.innerHTML +=  `<li>Location: ${element.location} </li><br><br>`;
         }
         contained.append(e);
 
@@ -138,11 +134,7 @@ async function allevents() {
         e.innerHTML +=  `<li>Category: ${element.category} </li>`;
         e.innerHTML +=  `<li>Number Attending: ${element.number_attending} </li>`;
         if (element.image){
-            e.innerHTML +=  `<li>Location: ${element.location} </li><br>`;
             e.innerHTML +=  `<img src="/media/${element.image}" width="40%" height="40%"><br><br>`;
-        }
-        else {
-            e.innerHTML +=  `<li>Location: ${element.location} </li><br><br>`;
         }
         contained.append(e);
 
@@ -159,38 +151,6 @@ async function allevents() {
         })
     });
  
-
-let autocomplete;
-function initAutocomplete() {
-    console.log("api is being called...");
-    autocomplete = new google.maps.places.Autocomplete(
-        document.getElementById('autocomplete'),
-        {
-            types: ['establishment'],
-            componentRestrictions: {'country': ['US']},
-            fields: ['place_id', 'geometry', 'name', 'formatted_address']
-        });
-    autocomplete.addListener('place_changed', onPlaceChanged);
-}
-
-
-function onPlaceChanged() {
-    var place = autocomplete.getPlace();
-    console.log(place)
-
-
-    if (!place.geometry) {
-        // user did not select a prediction; reset the input field
-        document.getElementById('autocomplete').value = '';
-        alert("Invalid place");
-
-    } else {
-        // Display details about the valid place
-        //document.getElementById('details').innerHTML = place.name;
-        document.getElementById('autocomplete').value = place.formatted_address;
-    }
-}
-
 function single_event(id, time){      
     document.querySelector('#list2').innerHTML = ''; 
        
@@ -235,11 +195,7 @@ function single_event(id, time){
     e.innerHTML +=  `<li>Category: ${object.category} </li>`;
     e.innerHTML +=  `<li>Number Attending: ${object.number_attending} </li>`;
     if (object.image){
-        e.innerHTML +=  `<li>Location: ${object.location} </li><br>`;
         e.innerHTML +=  `<img src="/media/${object.image}" width="40%" height="40%"><br><br>`;
-    }
-    else {
-        e.innerHTML +=  `<li>Location: ${object.location} </li><br><br>`;
     }
     
     contained2.append(e);
@@ -313,8 +269,7 @@ async function event_access(access, id, username){
             number_attending:1
         })
     })
-    .then(location.reload())
-    //.then(response => response.json())
+    .then(() => location.reload())
     .then(data => {
         console.log("From update",data);
     })

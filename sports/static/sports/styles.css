@@ -340,12 +340,3 @@ footer {
     border: 2px solid;
     border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
 }
-
-/* ==========================================
-   Map Styles
-   ========================================== */
-
-#map {
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}

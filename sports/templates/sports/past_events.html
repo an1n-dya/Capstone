@@ -63,10 +63,6 @@
                             {{ event.start|time:"g:i A" }} - {{ event.end|time:"g:i A" }}
                         </p>
                         <p class="mb-1">
-                            <i class="bi bi-geo-alt text-primary"></i>
-                            {{ event.location|truncatewords:4 }}
-                        </p>
-                        <p class="mb-1">
                             <i class="bi bi-person text-primary"></i>
                             Host: <a href="{% url 'user_profile' event.host.username %}" class="text-decoration-none">
                                 {{ event.host.username }}
