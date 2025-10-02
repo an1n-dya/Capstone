@@ -124,6 +124,30 @@ class SportsAppTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, f"{reverse('login')}?next={reverse('create_event')}")
 
+    def test_successful_event_creation(self):
+        """Test that a logged-in user can successfully create an event."""
+        self.client.login(username='host', password='password123')
+        event_count_before = Events.objects.count()
+        event_data = {
+            'title': 'New Frisbee Game',
+            'description': 'A new game for everyone.',
+            'date': (timezone.now() + timedelta(days=10)).strftime('%Y-%m-%d'),
+            'start': '10:00',
+            'end': '12:00',
+            'category': 'ultimate_frisbee',
+            'skill_level': 'all',
+            'max_attendees': 20
+        }
+        response = self.client.post(reverse('create_event'), event_data)
+        
+        # Check that the event was created and we were redirected
+        self.assertEqual(Events.objects.count(), event_count_before + 1)
+        new_event = Events.objects.get(title='New Frisbee Game')
+        self.assertRedirects(response, reverse('event_detail', args=[new_event.id]))
+
+        # Check that the host is automatically an attendee
+        self.assertIn(self.host_user, new_event.attendees.all())
+
     def test_join_and_leave_event(self):
         """Test that a logged-in user can join and then leave an event."""
         # Log in the attendee
@@ -181,3 +205,15 @@ class SportsAppTests(TestCase):
         self.assertTrue(response.json()['success'])
         self.upcoming_event.refresh_from_db()
         self.assertTrue(self.upcoming_event.is_cancelled)
+
+    def test_non_host_cannot_edit_event(self):
+        """Test that a user who is not the host cannot edit an event."""
+        # Log in as a regular attendee
+        self.client.login(username='attendee', password='password123')
+        edit_url = reverse('edit_event', args=[self.upcoming_event.id])
+        
+        # Try to POST data to edit the event
+        response = self.client.post(edit_url, {'title': 'Changed Title'})
+        self.assertRedirects(response, reverse('event_detail', args=[self.upcoming_event.id]))
+        self.upcoming_event.refresh_from_db()
+        self.assertNotEqual(self.upcoming_event.title, 'Changed Title')
