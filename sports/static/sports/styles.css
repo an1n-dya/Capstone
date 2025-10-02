@@ -208,8 +208,13 @@ body {
 }
 
 .pagination .page-item.active .page-link {
+    color: #ffffff !important;
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+}
+
+.pagination .page-item.active .page-link:hover {
+    color: #ffffff !important;
 }
 
 /* ==========================================

@@ -93,6 +93,15 @@ capstone/
 │   ├── forms.py           # Django forms for user input
 │   ├── urls.py            # Application-level URL patterns
 │   ├── admin.py           # Admin interface configuration
+│   ├── tests.py           # Application-specific tests
+│   ├── apps.py            # Application configuration
+│   │
+│   ├── templatetags/      # Custom Django template tags
+│   │   └── pagination_tags.py # Tags for handling pagination URLs
+│   │
+│   ├── management/        # Custom management commands
+│   │   └── commands/
+│   │       └── populate_demo.py # Script to populate DB with demo data
 │   │
 │   ├── static/sports/     # Static files
 │   │   ├── styles.css     # Custom CSS styles
@@ -166,19 +175,29 @@ capstone/
    python manage.py migrate
    ```
 
-5. **Create a superuser** (optional):
+5. **Create a superuser** (optional, for admin access):
    ```bash
    python manage.py createsuperuser
    ```
 
-6. **Run the development server**:
+6. **Populate with Demo Data** (optional):
+   To fill the database with sample users, events, and comments for demonstration purposes, run the following command. This is highly recommended for seeing the app's features in action.
+   ```bash
+   python manage.py populate_demo
+   ```
+   To clear old demo data before populating, use the `--clear` flag:
+   ```bash
+   python manage.py populate_demo --clear
+   ```
+
+7. **Run the development server**:
    ```bash
    python manage.py runserver
    ```
 
-7. **Access the application**:
+8. **Access the application**:
    - Open your browser and navigate to `http://localhost:8000`
-   - Register a new account or login with existing credentials
+   - Register a new account or log in with a demo account (e.g., username: `sarah_runner`, password: `demo1234`)
 
 ## Usage Guide
 
