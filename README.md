@@ -51,11 +51,7 @@ The application demonstrates significant technical complexity through:
    - Profile pictures and bio information
    - User statistics and event history
 
-6. **Email Integration**:
-   - Password reset functionality with email tokens
-   - Configurable SMTP settings for production
-
-7. **Security Features**:
+6. **Security Features**:
    - CSRF protection on all forms
    - User authentication requirements for sensitive actions
    - Input validation and sanitization
@@ -86,7 +82,7 @@ The application demonstrates significant technical complexity through:
 ```
 capstone/
 ├── capstone/               # Main project directory
-│   ├── settings.py        # Django settings with email, timezone, and so on
+│   ├── settings.py        # Django settings with timezone, and so on
 │   ├── urls.py            # Project-level URL routing
 │   ├── wsgi.py            # WSGI configuration for deployment
 │   └── asgi.py            # ASGI configuration for async support
@@ -223,7 +219,6 @@ This will discover and run all tests within the `sports` application, providing 
 - **Frontend**: Bootstrap 5.3, JavaScript (ES6+)
 - **Database**: SQLite (development), PostgreSQL-ready
 - **Authentication**: Django's built-in authentication system
-- **Email**: SMTP integration for password resets
 - **Styling**: Custom CSS with Bootstrap components
 - **Icons**: Bootstrap Icons library
 
