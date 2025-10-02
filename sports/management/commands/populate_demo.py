@@ -1,13 +1,16 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.conf import settings
+from django.core.files import File
 from datetime import datetime, timedelta
 import random
-
+import os
+ 
 from sports.models import User, Events, EventComment
 
 
 class Command(BaseCommand):
-    help = 'Populate database with demo data for Sports Meets'
+    help = 'Populate database with demo data for Playfield'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -37,7 +40,8 @@ class Command(BaseCommand):
                 'first_name': 'Sarah',
                 'last_name': 'Johnson',
                 'bio': 'Marathon runner and fitness enthusiast. Love organizing community runs!',
-                'favorite_sports': 'Running, Cycling, Swimming'
+                'favorite_sports': 'Running, Cycling, Swimming',
+                'profile_picture': 'profile_pics/sarah_runner.png'
             },
             {
                 'username': 'mike_baller',
@@ -106,22 +110,33 @@ class Command(BaseCommand):
 
         users = []
         for user_data in demo_users:
-            user, created = User.objects.get_or_create(
+            # Separate profile picture from other data
+            profile_pic_path = user_data.pop('profile_picture', None)
+            password = user_data.pop('password')
+
+            user, created = User.objects.update_or_create(
                 username=user_data['username'],
-                defaults={
-                    'email': user_data['email'],
-                    'first_name': user_data['first_name'],
-                    'last_name': user_data['last_name'],
-                    'bio': user_data['bio'],
-                    'favorite_sports': user_data['favorite_sports']
-                }
+                defaults=user_data
             )
+
             if created:
-                user.set_password(user_data['password'])
-                user.save()
+                user.set_password(password)
                 self.stdout.write(self.style.SUCCESS(f"✓ Created user: {user.username} ({user.get_full_name()})"))
             else:
-                self.stdout.write(self.style.WARNING(f"○ User already exists: {user.username}"))
+                self.stdout.write(self.style.WARNING(f"○ Updated existing user: {user.username}"))
+
+            # Handle profile picture assignment
+            if profile_pic_path:
+                full_pic_path = os.path.join(settings.MEDIA_ROOT, profile_pic_path)
+                if os.path.exists(full_pic_path):
+                    with open(full_pic_path, 'rb') as f:
+                        user.profile_picture.save(os.path.basename(profile_pic_path), File(f), save=True)
+                    self.stdout.write(self.style.SUCCESS(f"  - Assigned profile picture to {user.username}"))
+                else:
+                    self.stdout.write(self.style.WARNING(f"  - Profile picture not found: {full_pic_path}"))
+            
+            # Save user if created or picture was added
+            user.save()
             users.append(user)
 
         self.stdout.write(f"\nTotal users: {len(users)}")
@@ -290,6 +305,17 @@ class Command(BaseCommand):
             },
         ]
 
+        # Map categories to representative images. Assumes images are in MEDIA_ROOT/events/
+        IMAGE_MAP = {
+            # Corrected to use actual available images
+            'soccer': ['events/soccer.jpeg'],
+            'volleyball': ['events/volleyball.jpg'],
+            'golf': ['events/golf.jpeg'],
+            'ultimate_frisbee': ['events/ultimate_frisbee.jpeg'],
+            'cricket': ['events/cricket.jpg'],
+            # Other categories will not have images and will fall back gracefully.
+        }
+
         # Time slots for events
         time_slots = [
             (8, 0),   # 8:00 AM
@@ -331,6 +357,16 @@ class Command(BaseCommand):
                     event_timestamp = timezone.make_aware(
                         datetime.combine(event_date, end_time)
                     )
+
+                    # Get a relevant image
+                    event_image = None
+                    if template['category'] in IMAGE_MAP:
+                        image_path = random.choice(IMAGE_MAP[template['category']])
+                        full_image_path = os.path.join(settings.MEDIA_ROOT, image_path)
+                        if os.path.exists(full_image_path):
+                            event_image = File(open(full_image_path, 'rb'), name=os.path.basename(image_path))
+                        else:
+                            self.stdout.write(self.style.WARNING(f"  - Image not found: {full_image_path}"))
                     
                     # Create event
                     event = Events.objects.create(
@@ -343,7 +379,8 @@ class Command(BaseCommand):
                         timestamp=event_timestamp,
                         category=template['category'],
                         skill_level=template['skill_level'],
-                        max_attendees=template['max_attendees']
+                        max_attendees=template['max_attendees'],
+                        image=event_image
                     )
                     
                     # Add host as attendee
@@ -388,6 +425,16 @@ class Command(BaseCommand):
                 datetime.combine(event_date, end_time)
             )
             
+            # Get a relevant image for past events too
+            event_image = None
+            if template['category'] in IMAGE_MAP:
+                image_path = random.choice(IMAGE_MAP[template['category']])
+                full_image_path = os.path.join(settings.MEDIA_ROOT, image_path)
+                if os.path.exists(full_image_path):
+                    event_image = File(open(full_image_path, 'rb'), name=os.path.basename(image_path))
+                else:
+                    self.stdout.write(self.style.WARNING(f"  - Image not found: {full_image_path}"))
+
             event = Events.objects.create(
                 title=template['title'],
                 description=template['description'],
@@ -398,7 +445,8 @@ class Command(BaseCommand):
                 timestamp=event_timestamp,
                 category=template['category'],
                 skill_level=template['skill_level'],
-                max_attendees=template['max_attendees']
+                max_attendees=template['max_attendees'],
+                image=event_image
             )
             
             # Add attendees to past events

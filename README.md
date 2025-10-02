@@ -1,10 +1,10 @@
-# Sports Meets - CS50w Capstone Project
+# Playfield - CS50w Capstone Project
 
 ## Overview
 
-Sports Meets is a dynamic web application designed to connect sports enthusiasts in local communities. The platform addresses the common problem of finding and organizing casual sports events by providing a streamlined, user-friendly interface that eliminates the clutter and complexity found in general community event platforms.
+Playfield is a dynamic web application designed to connect sports enthusiasts in local communities. The platform addresses the common problem of finding and organizing casual sports events by providing a streamlined, user-friendly interface that eliminates the clutter and complexity found in general community event platforms.
 
-The application allows users to create, discover, and join sports events in their area, fostering an active and engaged sports community. Unlike other community platforms that mix various types of events and content, Sports Meets focuses exclusively on sports activities, making it easier for athletes and sports enthusiasts to find exactly what they're looking for.
+The application allows users to create, discover, and join sports events in their area, fostering an active and engaged sports community. Unlike other community platforms that mix various types of events and content, Playfield focuses exclusively on sports activities, making it easier for athletes and sports enthusiasts to find exactly what they're looking for.
 
 ## Distinctiveness and Complexity
 
@@ -12,15 +12,15 @@ This project satisfies the distinctiveness and complexity requirements for the C
 
 ### Distinctiveness
 
-Sports Meets is fundamentally different from the other projects in the CS50W course:
+Playfield is fundamentally different from the other projects in the CS50W course:
 
-1. **Not a Social Network**: Unlike Project 4 (Network), Sports Meets is not focused on social interactions, posts, or following mechanisms. Instead, it's an event management platform specifically for organizing real-world sports activities.
+1. **Not a Social Network**: Unlike Project 4 (Network), Playfield is not focused on social interactions, posts, or following mechanisms. Instead, it's an event management platform specifically for organizing real-world sports activities.
 
 2. **Not E-Commerce**: Unlike Project 2 (Commerce), this application doesn't involve buying, selling, or auctioning items. There are no financial transactions, bidding systems, or product listings.
 
 3. **Not Email or Wiki**: The application serves a completely different purpose than Projects 3 (Mail) and 1 (Wiki), focusing on event coordination rather than communication or information management.
 
-4. **Unique Domain Focus**: Sports Meets addresses the specific need of organizing in-person sports activities, a domain not covered in any course project.
+4. **Unique Domain Focus**: Playfield addresses the specific need of organizing in-person sports activities, a domain not covered in any course project.
 
 ### Complexity
 

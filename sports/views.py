@@ -162,6 +162,12 @@ def toggle_attendance(request, event_id):
             'message': 'Host cannot leave their own event'
         })
     
+    if event.is_past:
+        return JsonResponse({
+            'success': False,
+            'message': 'You cannot join or leave a past event.'
+        }, status=400)
+
     if user in event.attendees.all():
         event.attendees.remove(user)
         message = "You've left the event"
@@ -176,12 +182,12 @@ def toggle_attendance(request, event_id):
             })
         event.attendees.add(user)
         message = "You've joined the event!"
+        new_status = "joined"
         attending = True
     
     return JsonResponse({
         'success': True,
         'message': message,
-        'status': 'left' if attending else 'joined',
         'attending': attending,
         'attendees_count': event.number_attending,
         'spots_available': event.spots_available
@@ -345,7 +351,7 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, "Registration successful! Welcome to Sports Meets!")
+            messages.success(request, "Registration successful! Welcome to Playfield!")
             return redirect('index')
     else:
         form = CustomUserCreationForm()
