@@ -215,7 +215,7 @@ This will discover and run all tests within the `sports` application, providing 
 
 ## Technologies Used
 
-- **Backend**: Django 4.2.24 (Python web framework)
+- **Backend**: Django 5.2.7 (Python web framework)
 - **Frontend**: Bootstrap 5.3, JavaScript (ES6+)
 - **Database**: SQLite (development), PostgreSQL-ready
 - **Authentication**: Django's built-in authentication system
