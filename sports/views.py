@@ -316,6 +316,12 @@ def login_view(request):
         
         if user is not None:
             login(request, user)
+            
+            # Handle "Remember me"
+            remember_me = request.POST.get('remember')
+            if not remember_me:
+                request.session.set_expiry(0) # Expire on browser close
+
             next_url = request.GET.get('next', 'index')
             messages.success(request, f"Welcome back, {user.username}!")
             return redirect(next_url)
