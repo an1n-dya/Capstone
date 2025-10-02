@@ -103,6 +103,14 @@ class Events(models.Model):
         return self.timestamp < timezone.now()
     
     @property
+    def attendance_percentage(self):
+        """Returns the percentage of spots filled."""
+        if self.max_attendees == 0:
+            return 100
+        percentage = (self.number_attending / self.max_attendees) * 100
+        return min(int(percentage), 100)
+    
+    @property
     def is_upcoming(self):
         return not self.is_past and not self.is_cancelled
     

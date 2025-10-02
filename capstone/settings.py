@@ -8,6 +8,8 @@ from pathlib import Path
 import os
 from decouple import config
 
+from django.utils import timezone
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -94,7 +96,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'US/Pacific'
+TIME_ZONE = timezone.now()
 USE_I18N = True
 USE_TZ = True
 

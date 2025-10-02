@@ -165,11 +165,13 @@ def toggle_attendance(request, event_id):
     if user in event.attendees.all():
         event.attendees.remove(user)
         message = "You've left the event"
+        new_status = "joined"
         attending = False
     else:
         if event.is_full:
             return JsonResponse({
                 'success': False,
+                'status': 'full',
                 'message': 'Event is full'
             })
         event.attendees.add(user)
@@ -179,6 +181,7 @@ def toggle_attendance(request, event_id):
     return JsonResponse({
         'success': True,
         'message': message,
+        'status': 'left' if attending else 'joined',
         'attending': attending,
         'attendees_count': event.number_attending,
         'spots_available': event.spots_available

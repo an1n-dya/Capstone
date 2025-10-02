@@ -97,7 +97,6 @@ capstone/
 │   ├── forms.py           # Django forms for user input
 │   ├── urls.py            # Application-level URL patterns
 │   ├── admin.py           # Admin interface configuration
-│   ├── context_processors.py  # Custom context processors
 │   │
 │   ├── static/sports/     # Static files
 │   │   ├── styles.css     # Custom CSS styles
@@ -186,6 +185,17 @@ capstone/
    - Register a new account or login with existing credentials
 
 ## Usage Guide
+
+### Running Tests
+
+The project includes a comprehensive test suite to ensure code quality and prevent regressions. To run the tests, execute the following command from the project root:
+
+```bash
+python manage.py test sports
+```
+
+This will discover and run all tests within the `sports` application, providing a summary of the results.
+
 
 ### Creating an Event
 1. Login to your account

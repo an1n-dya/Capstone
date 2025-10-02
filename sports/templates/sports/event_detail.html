@@ -87,7 +87,7 @@
                             <h5>Attendance</h5>
                             <div class="progress mb-3" style="height: 25px;">
                                 <div class="progress-bar bg-primary" role="progressbar" 
-                                     style="width: {{ event.number_attending|floatformat:0|mul:100|div:event.max_attendees }}%"
+                                     style="width: {{ event.attendance_percentage }}%"
                                      aria-valuenow="{{ event.number_attending }}" 
                                      aria-valuemin="0" 
                                      aria-valuemax="{{ event.max_attendees }}">
