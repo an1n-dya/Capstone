@@ -36,6 +36,7 @@ class SportsAppTests(TestCase):
             category='soccer',
             skill_level='intermediate'
         )
+        self.upcoming_event.attendees.add(self.host_user)
 
         past_datetime = now - timedelta(days=1)
         self.past_event = Events.objects.create(
@@ -50,6 +51,7 @@ class SportsAppTests(TestCase):
             category='basketball',
             skill_level='beginner'
         )
+        self.past_event.attendees.add(self.host_user)
 
         full_datetime = now + timedelta(days=2)
         self.full_event = Events.objects.create(
@@ -64,7 +66,7 @@ class SportsAppTests(TestCase):
             category='tennis',
             skill_level='advanced'
         )
-        self.full_event.attendees.add(self.attendee_user)
+        self.full_event.attendees.add(self.host_user, self.attendee_user)
 
     def test_user_model_creation(self):
         """Test that a user can be created successfully."""
@@ -85,18 +87,20 @@ class SportsAppTests(TestCase):
     def test_event_is_full_property(self):
         """Test the is_full property on the Event model."""
         self.assertFalse(self.upcoming_event.is_full)
-        self.assertTrue(self.full_event.is_full)
+        # Create a new event that is actually full
+        self.full_event.max_attendees = 2
+        self.full_event.save()
+        self.assertTrue(self.full_event.is_full) # Host + attendee = 2
 
     def test_spots_available_property(self):
         """Test the spots_available property on the Event model."""
-        self.assertEqual(self.upcoming_event.spots_available, 10)
+        self.assertEqual(self.upcoming_event.spots_available, 9) # 10 max - 1 host
         self.assertEqual(self.full_event.spots_available, 0)
 
     def test_event_attendance_percentage_property(self):
         """Test the attendance_percentage property on the Event model."""
-        self.upcoming_event.attendees.add(self.host_user) # Host is an attendee
         self.assertEqual(self.upcoming_event.attendance_percentage, 10) # 1 of 10
-        self.assertEqual(self.full_event.attendance_percentage, 100) # 1 of 1
+        self.assertEqual(self.full_event.attendance_percentage, 100) # 2 of 2
 
     def test_index_view(self):
         """Test that the index view loads and displays upcoming events."""
@@ -160,12 +164,12 @@ class SportsAppTests(TestCase):
         # Check response
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['success'])
-        self.assertEqual(response.json()['status'], 'left') # The new status is "left" (i.e., the button text)
+        self.assertEqual(response.json()['button_text'], 'Leave Event')
 
         # Verify in database
         self.upcoming_event.refresh_from_db()
         self.assertIn(self.attendee_user, self.upcoming_event.attendees.all())
-        self.assertEqual(self.upcoming_event.number_attending, 1)
+        self.assertEqual(self.upcoming_event.number_attending, 2) # Host + attendee
 
         # --- Test Leaving ---
         response = self.client.post(join_url)
@@ -173,12 +177,12 @@ class SportsAppTests(TestCase):
         # Check response
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['success'])
-        self.assertEqual(response.json()['status'], 'joined') # The new status is "joined"
+        self.assertEqual(response.json()['button_text'], 'Join Event')
 
         # Verify in database
         self.upcoming_event.refresh_from_db()
         self.assertNotIn(self.attendee_user, self.upcoming_event.attendees.all())
-        self.assertEqual(self.upcoming_event.number_attending, 0)
+        self.assertEqual(self.upcoming_event.number_attending, 1) # Just the host remains
 
     def test_post_comment(self):
         """Test that a logged-in user can post a comment on an event."""
@@ -217,3 +221,163 @@ class SportsAppTests(TestCase):
         self.assertRedirects(response, reverse('event_detail', args=[self.upcoming_event.id]))
         self.upcoming_event.refresh_from_db()
         self.assertNotEqual(self.upcoming_event.title, 'Changed Title')
+
+    def test_cannot_join_full_event(self):
+        """Test that a user cannot join an event that is already full."""
+        # Create a new user to try and join
+        joiner_user = User.objects.create_user(username='joiner', password='password123')
+        self.client.login(username='joiner', password='password123')
+
+        # Try to join the full event
+        join_url = reverse('toggle_attendance', args=[self.full_event.id])
+        response = self.client.post(join_url)
+
+        # Check response
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['success'])
+        self.assertEqual(response.json()['message'], 'Event is full')
+
+        # Verify user is not added to attendees
+        self.full_event.refresh_from_db()
+        self.assertNotIn(joiner_user, self.full_event.attendees.all())
+
+    def test_host_cannot_leave_event(self):
+        """Test that the host of an event cannot leave it."""
+        self.upcoming_event.attendees.add(self.host_user) # Ensure host is an attendee
+        self.client.login(username='host', password='password123')
+        leave_url = reverse('toggle_attendance', args=[self.upcoming_event.id])
+        response = self.client.post(leave_url)
+
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['success'])
+        self.assertEqual(response.json()['message'], 'Host cannot leave their own event')
+
+    def test_non_host_cannot_cancel_event(self):
+        """Test that a user who is not the host cannot cancel an event."""
+        self.client.login(username='attendee', password='password123')
+        cancel_url = reverse('cancel_event', args=[self.upcoming_event.id])
+        response = self.client.post(cancel_url)
+
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()['success'])
+        self.assertEqual(response.json()['message'], 'Only the host can cancel this event')
+
+        # Verify event is not cancelled
+        self.upcoming_event.refresh_from_db()
+        self.assertFalse(self.upcoming_event.is_cancelled)
+
+    def test_invalid_event_creation(self):
+        """Test that creating an event with invalid data (e.g., end time before start time) fails."""
+        self.client.login(username='host', password='password123')
+        event_count_before = Events.objects.count()
+        invalid_event_data = {
+            'title': 'Invalid Event',
+            'description': 'This should not be created.',
+            'date': (timezone.now() + timedelta(days=5)).strftime('%Y-%m-%d'),
+            'start': '14:00',
+            'end': '13:00',  # End time is before start time
+            'category': 'other',
+            'skill_level': 'all',
+            'max_attendees': 5
+        }
+        response = self.client.post(reverse('create_event'), invalid_event_data)
+
+        # Check that we are re-rendered the form page with an error
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "End time must be after start time.")
+        self.assertEqual(Events.objects.count(), event_count_before)
+
+    def test_event_filtering_on_index(self):
+        """Test that the event filtering on the index page works correctly."""
+        # There is 1 'soccer' event and 1 'basketball' event upcoming (in setUp)
+        response = self.client.get(reverse('index'), {'category': 'soccer'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Upcoming Soccer Game")
+        self.assertNotContains(response, "Full Tennis Match") # Different category
+
+        response = self.client.get(reverse('index'), {'category': 'basketball'})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Upcoming Soccer Game")
+
+    def test_cannot_edit_event_with_other_attendees(self):
+        """Test that a host cannot edit an event once other users have joined."""
+        # Have another user join the event
+        self.upcoming_event.attendees.add(self.attendee_user) # Host is already attending from setUp
+        self.assertEqual(self.upcoming_event.number_attending, 2)
+
+        # Log in as the host and try to edit
+        self.client.login(username='host', password='password123')
+        edit_url = reverse('edit_event', args=[self.upcoming_event.id])
+        response = self.client.get(edit_url) # A GET request is enough to test the redirect
+
+        # Check for redirect and warning message
+        self.assertRedirects(response, reverse('event_detail', args=[self.upcoming_event.id]))
+        
+        # To check the message, we need to follow the redirect
+        response_followed = self.client.get(edit_url, follow=True)
+        self.assertContains(response_followed, "You cannot edit an event after other users have joined.")
+
+    def test_cannot_join_cancelled_event(self):
+        """Test that a user cannot join an event that has been cancelled."""
+        # Cancel the event first
+        self.upcoming_event.is_cancelled = True
+        self.upcoming_event.save()
+
+        # Log in and try to join
+        self.client.login(username='attendee', password='password123')
+        join_url = reverse('toggle_attendance', args=[self.upcoming_event.id])
+        response = self.client.post(join_url)
+
+        # Check for failure response
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['success'])
+        self.assertEqual(response.json()['message'], 'This event has been cancelled.')
+
+    def test_my_events_view_displays_correct_events(self):
+        """Test that the 'My Events' page correctly separates hosted and attended events."""
+        # The attendee_user is already attending full_event from setUp
+        # The host_user is hosting all events
+        
+        # Log in as the host
+        self.client.login(username='host', password='password123')
+        response = self.client.get(reverse('my_events'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Upcoming Soccer Game") # Hosted
+        self.assertContains(response, "Past Basketball Game") # Hosted
+        self.assertContains(response, "Full Tennis Match") # Hosted
+        self.assertContains(response, "Hosted Events")
+        self.assertNotContains(response, "Attending Events") # Host is not attending any other events
+
+    def test_event_creation_duration_validation(self):
+        """Test that creating an event with a duration less than 1 hour fails."""
+        self.client.login(username='host', password='password123')
+        invalid_duration_data = {
+            'title': 'Too Short Event',
+            'description': 'This event is too short.',
+            'date': (timezone.now() + timedelta(days=5)).strftime('%Y-%m-%d'),
+            'start': '14:00',
+            'end': '14:30',  # Only 30 minutes long
+            'category': 'other',
+            'skill_level': 'all',
+            'max_attendees': 5
+        }
+        response = self.client.post(reverse('create_event'), invalid_duration_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Event must be at least 1 hour long.")
+
+    def test_user_can_edit_own_profile(self):
+        """Test that a logged-in user can successfully edit their own profile."""
+        self.client.login(username='attendee', password='password123')
+        profile_data = {'first_name': 'John', 'last_name': 'Doe', 'bio': 'A new bio.'}
+        response = self.client.post(reverse('edit_profile'), profile_data)
+
+        # Check for redirect to profile page
+        self.assertRedirects(response, reverse('profile'))
+
+        # Verify the data was saved
+        self.attendee_user.refresh_from_db()
+        self.assertEqual(self.attendee_user.first_name, 'John')
+        self.assertEqual(self.attendee_user.bio, 'A new bio.')

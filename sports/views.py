@@ -9,6 +9,7 @@ from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.conf import settings
 from datetime import datetime
 
@@ -17,6 +18,15 @@ from .forms import (
     EventForm, UserProfileForm, CustomUserCreationForm,
     EventFilterForm, CommentForm
 )
+
+def _get_profile_picture_url(user):
+    """
+    Helper function to get a user's profile picture URL or the default.
+    """
+    if user.profile_picture:
+        return user.profile_picture.url
+    return settings.STATIC_URL + 'sports/images/default_avatar.png'
+
 
 def index(request):
     """Display the homepage with upcoming events."""
@@ -128,6 +138,11 @@ def edit_event(request, event_id):
         messages.error(request, "You can only edit your own events.")
         return redirect('event_detail', event_id=event.id)
     
+    # Prevent editing if other users have already joined
+    if event.number_attending > 1:
+        messages.warning(request, "You cannot edit an event after other users have joined. Please cancel and create a new event if changes are needed.")
+        return redirect('event_detail', event_id=event.id)
+
     if request.method == "POST":
         form = EventForm(request.POST, request.FILES, instance=event)
         
@@ -141,6 +156,8 @@ def edit_event(request, event_id):
             form.save()
             messages.success(request, "Event updated successfully!")
             return redirect('event_detail', event_id=event.id)
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         form = EventForm(instance=event)
     
@@ -168,29 +185,47 @@ def toggle_attendance(request, event_id):
             'message': 'You cannot join or leave a past event.'
         }, status=400)
 
+    if event.is_cancelled:
+        return JsonResponse({
+            'success': False,
+            'message': 'This event has been cancelled.'
+        }, status=400)
+
     if user in event.attendees.all():
         event.attendees.remove(user)
         message = "You've left the event"
-        new_status = "joined"
+        button_text = "Join Event"
         attending = False
     else:
         if event.is_full:
             return JsonResponse({
                 'success': False,
-                'status': 'full',
-                'message': 'Event is full'
+                'message': 'Event is full',
+                'attending': False,
             })
         event.attendees.add(user)
-        message = "You've joined the event!"
-        new_status = "joined"
+        message = "You've joined the event"
+        button_text = "Leave Event"
         attending = True
     
+    # Prepare attendee list for the response
+    attendees = event.attendees.all().order_by('username')[:10]
+    attendees_list = [{
+        'username': attendee.username,
+        'profile_url': reverse('user_profile', args=[attendee.username]),
+        'profile_picture_url': _get_profile_picture_url(attendee),
+        'is_host': attendee == event.host
+    } for attendee in attendees]
+
     return JsonResponse({
         'success': True,
         'message': message,
         'attending': attending,
         'attendees_count': event.number_attending,
-        'spots_available': event.spots_available
+        'spots_available': event.spots_available,
+        'max_attendees': event.max_attendees,
+        'button_text': button_text,
+        'attendees_list': attendees_list,
     })
 
 @login_required
@@ -301,16 +336,25 @@ def add_comment(request, event_id):
         comment.author = request.user
         comment.save()
         
+        # Prepare data for AJAX response
         return JsonResponse({
             'success': True,
             'comment': {
                 'author': comment.author.username,
+                'author_pic_url': _get_profile_picture_url(comment.author),
+                'author_profile_url': reverse('user_profile', args=[comment.author.username]),
                 'content': comment.content,
-                'created_at': comment.created_at.strftime("%B %d, %Y at %I:%M %p")
+                # Use a cross-platform compatible way to format time.
+                # The '%-I' format code is not supported on Windows.
+                'created_at': comment.created_at.strftime("%b. %d, %Y, ") + comment.created_at.strftime("%I:%M %p").lstrip('0').replace("AM", "a.m.").replace("PM", "p.m."),
+                'naturaltime': naturaltime(comment.created_at)
             }
         })
     
-    return JsonResponse({'success': False})
+    return JsonResponse({
+        'success': False, 
+        'message': 'Invalid comment content.'
+    }, status=400)
 
 # Authentication views
 def login_view(request):

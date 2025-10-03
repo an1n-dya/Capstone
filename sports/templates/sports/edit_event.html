@@ -136,20 +136,3 @@
     </div>
 </div>
 {% endblock %}
-
-{% block extra_js %}
-<script>
-// Form validation
-document.getElementById('eventForm').addEventListener('submit', function(e) {
-    const startTime = document.querySelector('input[name="start"]').value;
-    const endTime = document.querySelector('input[name="end"]').value;
-    
-    if (startTime && endTime && startTime >= endTime) {
-        e.preventDefault();
-        alert('End time must be after start time');
-        return false;
-    }
-});
-</script>
-
-{% endblock %}

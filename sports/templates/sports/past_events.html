@@ -99,11 +99,15 @@
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?{% url_replace request page=page_obj.previous_page_number %}">Previous</a>
+                <a class="page-link" href="?{% url_replace request page=page_obj.previous_page_number %}">
+                    <i class="bi bi-chevron-left"></i> Previous
+                </a>
             </li>
             {% else %}
             <li class="page-item disabled">
-                <span class="page-link">Previous</span>
+                <span class="page-link">
+                    <i class="bi bi-chevron-left"></i> Previous
+                </span>
             </li>
             {% endif %}
             
@@ -116,16 +120,28 @@
                 <li class="page-item">
                     <a class="page-link" href="?{% url_replace request page=num %}">{{ num }}</a>
                 </li>
+                {% elif num == 1 or num == page_obj.paginator.num_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% url_replace request page=num %}">{{ num }}</a>
+                </li>
+                {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
                 {% endif %}
             {% endfor %}
             
             {% if page_obj.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?{% url_replace request page=page_obj.next_page_number %}">Next</a>
+                <a class="page-link" href="?{% url_replace request page=page_obj.next_page_number %}">
+                    Next <i class="bi bi-chevron-right"></i>
+                </a>
             </li>
             {% else %}
             <li class="page-item disabled">
-                <span class="page-link">Next</span>
+                <span class="page-link">
+                    Next <i class="bi bi-chevron-right"></i>
+                </span>
             </li>
             {% endif %}
         </ul>

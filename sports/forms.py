@@ -89,7 +89,7 @@ class EventForm(ModelForm):
         # Validate date is in the future
         if event_date:
             if event_date < date.today():
-                raise forms.ValidationError("Event date must be in the past.")
+                raise forms.ValidationError("Event date cannot be in the past.")
         
         # Validate end time is after start time
         if start_time and end_time:
