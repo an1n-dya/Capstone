@@ -202,7 +202,7 @@ def toggle_attendance(request, event_id):
                 'success': False,
                 'message': 'Event is full',
                 'attending': False,
-            })
+            }, status=400)
         event.attendees.add(user)
         message = "You've joined the event"
         button_text = "Leave Event"

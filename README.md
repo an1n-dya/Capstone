@@ -80,7 +80,7 @@ The application demonstrates significant technical complexity through:
 ## File Structure
 
 ```
-capstone/
+Capstone/
 ├── capstone/               # Main project directory
 │   ├── settings.py        # Django settings with timezone, and so on
 │   ├── urls.py            # Project-level URL routing

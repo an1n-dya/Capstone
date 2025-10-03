@@ -62,11 +62,11 @@ class SportsAppTests(TestCase):
             start=full_datetime.time(),
             end=(full_datetime + timedelta(hours=1)).time(),
             timestamp=full_datetime + timedelta(hours=1),
-            max_attendees=1,
+            max_attendees=2,
             category='tennis',
             skill_level='advanced'
         )
-        self.full_event.attendees.add(self.host_user, self.attendee_user)
+        self.full_event.attendees.add(self.host_user, self.attendee_user) # 2 attendees
 
     def test_user_model_creation(self):
         """Test that a user can be created successfully."""
@@ -87,9 +87,7 @@ class SportsAppTests(TestCase):
     def test_event_is_full_property(self):
         """Test the is_full property on the Event model."""
         self.assertFalse(self.upcoming_event.is_full)
-        # Create a new event that is actually full
-        self.full_event.max_attendees = 2
-        self.full_event.save()
+        # self.full_event is set up to be full
         self.assertTrue(self.full_event.is_full) # Host + attendee = 2
 
     def test_spots_available_property(self):
@@ -349,7 +347,7 @@ class SportsAppTests(TestCase):
         self.assertContains(response, "Past Basketball Game") # Hosted
         self.assertContains(response, "Full Tennis Match") # Hosted
         self.assertContains(response, "Hosted Events")
-        self.assertNotContains(response, "Attending Events") # Host is not attending any other events
+        self.assertNotContains(response, "Events I'm Attending") # Host is not attending any other events
 
     def test_event_creation_duration_validation(self):
         """Test that creating an event with a duration less than 1 hour fails."""
