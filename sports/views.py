@@ -73,7 +73,10 @@ def index(request):
 def event_detail(request, event_id):
     """Display detailed view of a single event."""
     event = get_object_or_404(
-        Events.objects.prefetch_related('attendees', 'comments__author__profile_picture'), 
+        Events.objects.select_related('host').prefetch_related(
+            'attendees',
+            'comments__author'
+        ), 
         pk=event_id
     )
     comments = event.comments.all()
@@ -214,8 +217,12 @@ def toggle_attendance(request, event_id):
             message = "You've joined the event"
             button_text = "Leave Event"
             attending = True
+    
+    # Refresh event to get updated data
+    event.refresh_from_db()
+    
     # Prepare attendee list for the response
-    attendees = event.attendees.all().order_by('username')[:10]
+    attendees = event.attendees.all()[:10]
     attendees_list = [{
         'username': attendee.username,
         'profile_url': reverse('user_profile', args=[attendee.username]),
@@ -307,12 +314,12 @@ def my_events(request):
     hosted = Events.objects.filter(
         host=request.user, 
         timestamp__gte=now
-    ).order_by('date', 'start')
+    ).select_related('host').prefetch_related('attendees').order_by('date', 'start')
     
     # Attending events
     attending = request.user.attending.filter(
         timestamp__gte=now
-    ).exclude(host=request.user).order_by('date', 'start')
+    ).exclude(host=request.user).select_related('host').prefetch_related('attendees').order_by('date', 'start')
     
     context = {
         'hosted_events': hosted,

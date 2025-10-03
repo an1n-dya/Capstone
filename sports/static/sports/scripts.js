@@ -6,20 +6,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach event listeners for any dynamic buttons on the page.
     // This uses event delegation to handle elements that might be added to the DOM later.
     document.body.addEventListener('click', (event) => {
+        const toggleBtn = event.target.closest('#toggle-attendance-btn');
+        const cancelBtn = event.target.closest('#cancel-event-btn');
+        const cancelBtnConfirm = event.target.closest('.cancel-event-btn-confirm');
+
         // Toggle Attendance Button
-        if (event.target.matches('#toggle-attendance-btn')) {
-            handleToggleAttendance(event.target);
+        if (toggleBtn) {
+            handleToggleAttendance(toggleBtn);
         }
 
         // Cancel Event Button
-        if (event.target.matches('#cancel-event-btn')) {
+        if (cancelBtn) {
             if (confirm('Are you sure you want to cancel this event? This action cannot be undone.')) {
-                handleCancelEvent(event.target);
+                handleCancelEvent(cancelBtn);
             }
         }
 
         // Generic confirmation for cancel buttons on list pages
-        if (event.target.matches('.cancel-event-btn-confirm')) {
+        if (cancelBtnConfirm) {
             if (!confirm('Are you sure you want to cancel this event? This action cannot be undone.')) {
                 event.preventDefault();
             }
@@ -53,22 +57,16 @@ async function handleToggleAttendance(button) {
             }
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            let errorMessage = 'An unexpected error occurred.';
-            try {
-                // Try to parse a JSON error message from the server
-                const errorData = await response.json();
-                if (errorData && errorData.message) {
-                    errorMessage = errorData.message;
-                }
-            } catch (e) {
-                // The response was not JSON, use the generic error.
-                throw new Error('An unexpected error occurred.');
-            }
-            alert(errorMessage);
-        } else {
-            const data = await response.json();
-            if (data.success) {
+            // Handle error response
+            alert(data.message || 'An unexpected error occurred.');
+            button.disabled = false;
+            return;
+        }
+
+        if (data.success) {
             // Update button text and style
             button.textContent = data.button_text;
             button.classList.toggle('btn-danger', data.attending);
@@ -91,9 +89,8 @@ async function handleToggleAttendance(button) {
 
             // Update the visual list of attendees
             updateAttendeesList(data.attendees_list, data.attendees_count);
-            } else {
-                alert(data.message); // Or display the error more gracefully
-            }
+        } else {
+            alert(data.message || 'An error occurred.');
         }
     } catch (error) {
         console.error('Error toggling attendance:', error);
@@ -121,9 +118,12 @@ async function handleCancelEvent(button) {
             }
         });
 
-        if (!response.ok) throw new Error('Network response was not ok.');
-
         const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || 'An unexpected error occurred.');
+            return;
+        }
 
         if (data.success) {
             // Reload the page to show the "Cancelled" state
@@ -162,9 +162,12 @@ async function handleCommentSubmit(event) {
             body: formData
         });
 
-        if (!response.ok) throw new Error('Network response was not ok.');
-
         const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.message || 'Failed to post comment.');
+            return;
+        }
 
         if (data.success) {
             // Create new comment element and add it to the list
@@ -173,26 +176,49 @@ async function handleCommentSubmit(event) {
             if (noCommentsEl) noCommentsEl.remove();
 
             const newComment = document.createElement('div');
-            newComment.className = 'd-flex mb-3 pb-3 border-bottom'; // This will be the main container
+            newComment.className = 'd-flex mb-3 pb-3 border-bottom';
 
             // Create the structure safely to prevent XSS
             const authorPicDiv = document.createElement('div');
             authorPicDiv.className = 'flex-shrink-0';
-            authorPicDiv.innerHTML = `<img src="${data.comment.author_pic_url}" class="rounded-circle" width="40" height="40" alt="${data.comment.author}">`;
+            
+            const authorLink = document.createElement('a');
+            authorLink.href = data.comment.author_profile_url;
+            
+            const authorImg = document.createElement('img');
+            authorImg.src = data.comment.author_pic_url;
+            authorImg.className = 'rounded-circle';
+            authorImg.width = 40;
+            authorImg.height = 40;
+            authorImg.alt = data.comment.author;
+            
+            authorLink.appendChild(authorImg);
+            authorPicDiv.appendChild(authorLink);
 
             const commentBodyDiv = document.createElement('div');
             commentBodyDiv.className = 'ms-3 flex-grow-1';
 
             const commentHeaderDiv = document.createElement('div');
             commentHeaderDiv.className = 'd-flex justify-content-between';
-            commentHeaderDiv.innerHTML = `
-                <strong><a href="${data.comment.author_profile_url}" class="text-decoration-none text-dark">${data.comment.author}</a></strong>
-                <small class="text-muted">${data.comment.naturaltime}</small>
-            `;
+            
+            const authorNameLink = document.createElement('a');
+            authorNameLink.href = data.comment.author_profile_url;
+            authorNameLink.className = 'text-decoration-none text-dark';
+            
+            const authorStrong = document.createElement('strong');
+            authorStrong.textContent = data.comment.author;
+            authorNameLink.appendChild(authorStrong);
+            
+            const timeSmall = document.createElement('small');
+            timeSmall.className = 'text-muted';
+            timeSmall.textContent = data.comment.naturaltime;
+            
+            commentHeaderDiv.appendChild(authorNameLink);
+            commentHeaderDiv.appendChild(timeSmall);
 
             const commentContentP = document.createElement('p');
             commentContentP.className = 'mb-0 mt-1';
-            commentContentP.textContent = data.comment.content; // Use textContent to safely insert user content
+            commentContentP.textContent = data.comment.content;
 
             // Assemble the element
             commentBodyDiv.appendChild(commentHeaderDiv);
@@ -288,12 +314,16 @@ function updateAttendeesList(attendees, totalAttendees) {
             img.alt = attendee.username;
 
             const span = document.createElement('span');
-            span.textContent = attendee.username; // Use textContent for security
+            span.textContent = attendee.username;
 
             containerDiv.appendChild(img);
             containerDiv.appendChild(span);
+            
             if (attendee.is_host) {
-                containerDiv.innerHTML += ' <span class="badge bg-warning ms-2">Host</span>';
+                const hostBadge = document.createElement('span');
+                hostBadge.className = 'badge bg-warning ms-2';
+                hostBadge.textContent = 'Host';
+                containerDiv.appendChild(hostBadge);
             }
 
             attendeeEl.appendChild(containerDiv);
@@ -308,6 +338,9 @@ function updateAttendeesList(attendees, totalAttendees) {
             attendeesListEl.appendChild(moreEl);
         }
     } else {
-        attendeesListEl.innerHTML = '<p class="text-muted">No attendees yet.</p>';
+        const noAttendeesEl = document.createElement('p');
+        noAttendeesEl.className = 'text-muted';
+        noAttendeesEl.textContent = 'No attendees yet.';
+        attendeesListEl.appendChild(noAttendeesEl);
     }
 }
