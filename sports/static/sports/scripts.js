@@ -53,19 +53,22 @@ async function handleToggleAttendance(button) {
             }
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            // Handle server-side validation errors (e.g., event is past, cancelled)
-            // that return a non-200 status code but have a JSON body.
-            if (data && data.message) {
-                alert(data.message);
-            } else {
+            let errorMessage = 'An unexpected error occurred.';
+            try {
+                // Try to parse a JSON error message from the server
+                const errorData = await response.json();
+                if (errorData && errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                // The response was not JSON, use the generic error.
                 throw new Error('An unexpected error occurred.');
             }
-            // Optionally, reload the page to reflect the event's new state
-            window.location.reload();
-        } else if (data.success) {
+            alert(errorMessage);
+        } else {
+            const data = await response.json();
+            if (data.success) {
             // Update button text and style
             button.textContent = data.button_text;
             button.classList.toggle('btn-danger', data.attending);
@@ -77,13 +80,10 @@ async function handleToggleAttendance(button) {
 
             const spotsAvailableEl = document.getElementById('spots-available');
             if (spotsAvailableEl) {
-                if (data.spots_available > 0) {
-                    spotsAvailableEl.textContent = `${data.spots_available} spots left`;
-                    spotsAvailableEl.className = 'badge bg-success';
-                } else {
-                    spotsAvailableEl.textContent = 'Full';
-                    spotsAvailableEl.className = 'badge bg-warning';
-                }
+                const isFull = data.spots_available <= 0;
+                spotsAvailableEl.textContent = isFull ? 'Full' : `${data.spots_available} spots available`;
+                spotsAvailableEl.classList.toggle('bg-success', !isFull);
+                spotsAvailableEl.classList.toggle('bg-warning', isFull);
             }
 
             // Update progress bar
@@ -91,8 +91,9 @@ async function handleToggleAttendance(button) {
 
             // Update the visual list of attendees
             updateAttendeesList(data.attendees_list, data.attendees_count);
-        } else {
-            alert(data.message); // Or display the error more gracefully
+            } else {
+                alert(data.message); // Or display the error more gracefully
+            }
         }
     } catch (error) {
         console.error('Error toggling attendance:', error);

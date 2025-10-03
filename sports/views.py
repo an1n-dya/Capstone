@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseRedirect
 from django.urls import reverse
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -72,7 +72,10 @@ def index(request):
 
 def event_detail(request, event_id):
     """Display detailed view of a single event."""
-    event = get_object_or_404(Events, pk=event_id)
+    event = get_object_or_404(
+        Events.objects.prefetch_related('attendees', 'comments__author__profile_picture'), 
+        pk=event_id
+    )
     comments = event.comments.all()
     comment_form = CommentForm()
     
@@ -129,10 +132,11 @@ def edit_event(request, event_id):
     """Edit an existing event."""
     event = get_object_or_404(Events, pk=event_id)
 
+    # Prevent editing past events
     if event.is_past:
         messages.error(request, "You cannot edit a past event.")
         return redirect('event_detail', event_id=event.id)
-    
+
     # Check if user is the host
     if request.user != event.host:
         messages.error(request, "You can only edit your own events.")
@@ -169,15 +173,15 @@ def edit_event(request, event_id):
 @login_required
 @require_http_methods(["POST"])
 def toggle_attendance(request, event_id):
-    """Toggle user's attendance for an event."""
+    """Toggle user's attendance for an event atomically."""
     event = get_object_or_404(Events, pk=event_id)
     user = request.user
     
     if user == event.host:
         return JsonResponse({
             'success': False,
-            'message': 'Host cannot leave their own event'
-        })
+            'message': 'Host cannot leave their own event.'
+        }, status=403)
     
     if event.is_past:
         return JsonResponse({
@@ -191,23 +195,25 @@ def toggle_attendance(request, event_id):
             'message': 'This event has been cancelled.'
         }, status=400)
 
-    if user in event.attendees.all():
-        event.attendees.remove(user)
-        message = "You've left the event"
-        button_text = "Join Event"
-        attending = False
-    else:
-        if event.is_full:
-            return JsonResponse({
-                'success': False,
-                'message': 'Event is full',
-                'attending': False,
-            }, status=400)
-        event.attendees.add(user)
-        message = "You've joined the event"
-        button_text = "Leave Event"
-        attending = True
-    
+    with transaction.atomic():
+        # Re-fetch event inside transaction with select_for_update to lock the row
+        event_locked = Events.objects.select_for_update().get(pk=event_id)
+
+        if user in event_locked.attendees.all():
+            event_locked.attendees.remove(user)
+            message = "You've left the event"
+            button_text = "Join Event"
+            attending = False
+        else:
+            if event_locked.is_full:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Event is full',
+                }, status=400)
+            event_locked.attendees.add(user)
+            message = "You've joined the event"
+            button_text = "Leave Event"
+            attending = True
     # Prepare attendee list for the response
     attendees = event.attendees.all().order_by('username')[:10]
     attendees_list = [{
@@ -238,13 +244,13 @@ def cancel_event(request, event_id):
         return JsonResponse({
             'success': False,
             'message': 'You cannot cancel a past event.'
-        })
+        }, status=400)
     
     if request.user != event.host:
         return JsonResponse({
             'success': False,
             'message': 'Only the host can cancel this event'
-        })
+        }, status=403)
     
     event.is_cancelled = True
     event.save()
@@ -263,12 +269,10 @@ def user_profile(request, username=None):
         user = request.user
     
     # Get user's hosted events
-    hosted_events = Events.objects.filter(
-        host=user
-    ).order_by('-date')[:5]
+    hosted_events = Events.objects.filter(host=user).select_related('host').prefetch_related('attendees').order_by('-date')[:5]
     
     # Get user's attended events
-    attended_events = user.attending.all().order_by('-date')[:5]
+    attended_events = user.attending.all().select_related('host').prefetch_related('attendees').order_by('-date')[:5]
     
     context = {
         'profile_user': user,
@@ -297,11 +301,18 @@ def edit_profile(request):
 @login_required
 def my_events(request):
     """Display user's events (hosted and attending)."""
+    now = timezone.now()
+
     # Hosted events
-    hosted = Events.objects.filter(host=request.user).order_by('-date')
+    hosted = Events.objects.filter(
+        host=request.user, 
+        timestamp__gte=now
+    ).order_by('date', 'start')
     
     # Attending events
-    attending = request.user.attending.exclude(host=request.user).order_by('-date')
+    attending = request.user.attending.filter(
+        timestamp__gte=now
+    ).exclude(host=request.user).order_by('date', 'start')
     
     context = {
         'hosted_events': hosted,

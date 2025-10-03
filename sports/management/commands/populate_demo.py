@@ -393,7 +393,8 @@ class Command(BaseCommand):
                     )
                     
                     available_users = [u for u in users if u != host]
-                    attendees = random.sample(available_users, min(num_attendees, len(available_users)))
+                    sample_size = min(num_attendees, len(available_users))
+                    attendees = random.sample(available_users, sample_size)
                     
                     for attendee in attendees:
                         event.attendees.add(attendee)
@@ -457,7 +458,8 @@ class Command(BaseCommand):
             )
             
             available_users = [u for u in users if u != host]
-            attendees = random.sample(available_users, min(num_attendees, len(available_users)))
+            sample_size = min(num_attendees, len(available_users))
+            attendees = random.sample(available_users, sample_size)
             
             for attendee in attendees:
                 event.attendees.add(attendee)

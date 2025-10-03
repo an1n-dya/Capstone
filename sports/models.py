@@ -1,15 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
-from django.core.validators import MinValueValidator, MaxValueValidator
 from datetime import datetime
-import pytz
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
     bio = models.TextField(max_length=500, blank=True)
     favorite_sports = models.CharField(max_length=200, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.username}"
@@ -83,6 +81,14 @@ class Events(models.Model):
         verbose_name = "Event"
         verbose_name_plural = "Events"
     
+    def save(self, *args, **kwargs):
+        """Override save to automatically set the timestamp."""
+        if self.date and self.end:
+            # Combine date and end time to create a datetime object for the event's conclusion
+            event_end_datetime = datetime.combine(self.date, self.end)
+            self.timestamp = timezone.make_aware(event_end_datetime)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.title} - {self.date}"
     

@@ -247,9 +247,9 @@ class SportsAppTests(TestCase):
         response = self.client.post(leave_url)
 
         # Check response
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
         self.assertFalse(response.json()['success'])
-        self.assertEqual(response.json()['message'], 'Host cannot leave their own event')
+        self.assertEqual(response.json()['message'], 'Host cannot leave their own event.')
 
     def test_non_host_cannot_cancel_event(self):
         """Test that a user who is not the host cannot cancel an event."""
@@ -258,7 +258,7 @@ class SportsAppTests(TestCase):
         response = self.client.post(cancel_url)
 
         # Check response
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
         self.assertFalse(response.json()['success'])
         self.assertEqual(response.json()['message'], 'Only the host can cancel this event')
 
@@ -343,11 +343,11 @@ class SportsAppTests(TestCase):
         response = self.client.get(reverse('my_events'))
         
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Upcoming Soccer Game") # Hosted
-        self.assertContains(response, "Past Basketball Game") # Hosted
-        self.assertContains(response, "Full Tennis Match") # Hosted
+        # The 'My Events' page should only show UPCOMING events.
+        self.assertContains(response, "Upcoming Soccer Game") # Hosted and upcoming
+        self.assertContains(response, "Full Tennis Match") # Hosted and upcoming
+        self.assertNotContains(response, "Past Basketball Game") # Hosted but past
         self.assertContains(response, "Hosted Events")
-        self.assertNotContains(response, "Events I'm Attending") # Host is not attending any other events
 
     def test_event_creation_duration_validation(self):
         """Test that creating an event with a duration less than 1 hour fails."""
